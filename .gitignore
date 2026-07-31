@@ -1,0 +1,31 @@
+node_modules/
+dist/
+build/
+
+# Environment files
+.env
+.env.development
+.env.production
+.env.development.local
+.env.production.local
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+
+# OS files
+.DS_Store
+
+# IDEs
+.idea/
+.vscode/
+
+# Docker
+docker/data/
+docker/.env
+
+# Local backups
+backups/*.sql
+backups/*.tar.gz
