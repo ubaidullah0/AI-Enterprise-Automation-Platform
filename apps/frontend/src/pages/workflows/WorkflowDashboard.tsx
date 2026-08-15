@@ -134,9 +134,15 @@ export default function WorkflowDashboard() {
     }
   };
 
-  const openInN8n = (n8nId: string | null) => {
-    if (!n8nId) return alert('This workflow is not yet synced with n8n.');
-    window.open(`http://localhost:5678/workflow/${n8nId}`, '_blank');
+  const openInN8n = (wf: any) => {
+    const n8nUrl = import.meta.env.VITE_N8N_URL || '';
+    // If we have a real synced n8n workflow ID and n8n URL, open it there
+    if (wf.n8nWorkflowId && n8nUrl) {
+      window.open(`${n8nUrl}/workflow/${wf.n8nWorkflowId}`, '_blank');
+      return;
+    }
+    // Otherwise open the native editor — workflow was saved locally
+    navigate(`/workflows/${wf.id}/edit`);
   };
 
   const filteredWorkflows = workflows
@@ -309,11 +315,12 @@ export default function WorkflowDashboard() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => openInN8n(wf.n8nWorkflowId)}
+                    onClick={() => openInN8n(wf)}
                     className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-sm px-3.5 py-2 rounded-lg transition-colors border border-gray-700 text-gray-300"
                   >
-                    <ExternalLink size={13} />
-                    Open in n8n
+                    {wf.n8nWorkflowId
+                      ? <><ExternalLink size={13} /> Open in n8n</>
+                      : <><Edit3 size={13} /> Edit Workflow</>}
                   </button>
                 )}
                 <button
@@ -354,7 +361,7 @@ export default function WorkflowDashboard() {
                   className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 >
                   <option value="native">Native Builder (Recommended)</option>
-                  <option value="n8n">n8n (Self-hosted)</option>
+                  <option value="n8n">n8n Engine (requires self-hosted n8n)</option>
                 </select>
               </div>
               <div className="flex justify-end gap-3">

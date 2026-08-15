@@ -112,9 +112,9 @@ export const createWorkflow = async (req: Request, res: Response) => {
     if (!name) return res.status(400).json({ success: false, message: 'Workflow name is required' });
 
     const selectedEngine = engine === 'n8n' ? 'n8n' : 'native';
-
     let n8nWorkflowId: string | null = null;
-    
+    let resolvedEngine = selectedEngine;
+
     if (selectedEngine === 'n8n') {
       try {
         const n8nResult = await n8nService.createWorkflow(`[${organizationId.slice(0, 8)}] ${name}`) as any;
@@ -122,7 +122,7 @@ export const createWorkflow = async (req: Request, res: Response) => {
       } catch (n8nError: any) {
         // n8n is optional — if not configured, silently save as native workflow
         console.warn('[n8n] Not available, falling back to native engine:', n8nError?.message);
-        // Do NOT return error — just save workflow locally with native engine
+        resolvedEngine = 'native'; // degrade to native so frontend shows Edit button
       }
     }
 
@@ -132,8 +132,8 @@ export const createWorkflow = async (req: Request, res: Response) => {
         name,
         description: description ?? null,
         n8nWorkflowId,
-        engine: selectedEngine,
-        webhookToken: selectedEngine === 'native' ? crypto.randomBytes(16).toString('hex') : null,
+        engine: resolvedEngine,
+        webhookToken: resolvedEngine === 'native' ? crypto.randomBytes(16).toString('hex') : null,
         createdBy: userId,
         nodes: nodes ? nodes : undefined,
         edges: edges ? edges : undefined,
