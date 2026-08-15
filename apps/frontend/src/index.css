@@ -53,10 +53,29 @@
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground font-sans antialiased;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading tracking-tight;
+  }
+  
+  ::selection {
+    @apply bg-primary/30 text-primary-foreground;
+  }
+
+  /* Custom Scrollbar for sleek UI */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-700/50 rounded-full hover:bg-gray-600/80 transition-colors;
   }
 }

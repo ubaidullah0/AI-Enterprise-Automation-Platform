@@ -3,14 +3,17 @@ import { useAuthStore } from '../../store/authStore';
 import api from '../../lib/api';
 import {
   Play, Pause, Trash2, ExternalLink, Plus, Activity,
-  Search, Zap, CheckCircle2
+  Search, Zap, CheckCircle2, Edit3, Sparkles
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import AiWorkflowWizard from './components/AiWorkflowWizard';
 
 interface Workflow {
   id: string;
   name: string;
   description: string | null;
   n8nWorkflowId: string | null;
+  engine: string;
   isActive: boolean;
   triggerType: string | null;
   createdBy: string | null;
@@ -69,8 +72,11 @@ export default function WorkflowDashboard() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showAiWizard, setShowAiWizard] = useState(false);
   const [newWorkflowName, setNewWorkflowName] = useState('');
+  const [newWorkflowEngine, setNewWorkflowEngine] = useState('native');
   const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
 
   const fetchWorkflows = async () => {
@@ -97,12 +103,14 @@ export default function WorkflowDashboard() {
     e.preventDefault();
     if (!newWorkflowName.trim()) return;
     try {
-      await api.post('/workflows', { name: newWorkflowName });
+      await api.post('/workflows', { name: newWorkflowName, engine: newWorkflowEngine });
       setShowCreateModal(false);
       setNewWorkflowName('');
+      setNewWorkflowEngine('native');
       fetchWorkflows();
-    } catch (error) {
-      alert('Failed to create workflow');
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Failed to create workflow';
+      alert(msg);
     }
   };
 
@@ -111,7 +119,7 @@ export default function WorkflowDashboard() {
       await api.post('/workflows', { name: templateName });
       setShowTemplates(false);
       fetchWorkflows();
-    } catch (error) {
+    } catch {
       alert('Failed to create workflow from template');
     }
   };
@@ -121,7 +129,7 @@ export default function WorkflowDashboard() {
     try {
       await api.delete(`/workflows/${id}`);
       fetchWorkflows();
-    } catch (error) {
+    } catch {
       alert('Failed to delete workflow');
     }
   };
@@ -172,6 +180,13 @@ export default function WorkflowDashboard() {
           >
             <Zap size={16} className="text-amber-400" />
             Templates
+          </button>
+          <button
+            onClick={() => setShowAiWizard(true)}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-xl transition-all shadow-lg flex items-center gap-2"
+          >
+            <Sparkles size={16} />
+            Generate with AI
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
@@ -274,19 +289,33 @@ export default function WorkflowDashboard() {
                   </div>
                   <p className="text-sm text-gray-500 mt-0.5">
                     Updated {new Date(wf.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    {wf.n8nWorkflowId && <span className="ml-2 text-blue-500/70">· Synced with n8n</span>}
+                    {wf.engine === 'native' ? (
+                      <span className="ml-2 text-emerald-500/70">· Native</span>
+                    ) : (
+                      wf.n8nWorkflowId && <span className="ml-2 text-blue-500/70">· Synced with n8n</span>
+                    )}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={() => openInN8n(wf.n8nWorkflowId)}
-                  className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-sm px-3.5 py-2 rounded-lg transition-colors border border-gray-700 text-gray-300"
-                >
-                  <ExternalLink size={13} />
-                  Open in n8n
-                </button>
+                {wf.engine === 'native' ? (
+                  <button
+                    onClick={() => navigate(`/workflows/${wf.id}/edit`)}
+                    className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-sm px-3.5 py-2 rounded-lg transition-colors border border-gray-700 text-gray-300"
+                  >
+                    <Edit3 size={13} />
+                    Edit Workflow
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => openInN8n(wf.n8nWorkflowId)}
+                    className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-sm px-3.5 py-2 rounded-lg transition-colors border border-gray-700 text-gray-300"
+                  >
+                    <ExternalLink size={13} />
+                    Open in n8n
+                  </button>
+                )}
                 <button
                   onClick={() => handleDelete(wf.id)}
                   className="p-2 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
@@ -316,6 +345,17 @@ export default function WorkflowDashboard() {
                   className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                   placeholder="e.g. Lead Onboarding Automation"
                 />
+              </div>
+              <div className="mb-5">
+                <label className="block text-sm font-medium mb-2 text-gray-300">Workflow Engine</label>
+                <select
+                  value={newWorkflowEngine}
+                  onChange={(e) => setNewWorkflowEngine(e.target.value)}
+                  className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                >
+                  <option value="native">Native Builder (Recommended)</option>
+                  <option value="n8n">n8n (Self-hosted)</option>
+                </select>
               </div>
               <div className="flex justify-end gap-3">
                 <button type="button" onClick={() => setShowCreateModal(false)} className="px-5 py-2.5 text-gray-400 hover:text-white rounded-lg transition-colors">
@@ -362,6 +402,11 @@ export default function WorkflowDashboard() {
         </div>
       )}
 
+      <AiWorkflowWizard 
+        isOpen={showAiWizard} 
+        onClose={() => setShowAiWizard(false)} 
+        onSuccess={fetchWorkflows} 
+      />
     </div>
   );
 }

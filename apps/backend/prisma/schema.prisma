@@ -15,122 +15,123 @@ datasource db {
 // ---------------------------------------------------------
 
 model User {
-  id              String    @id @default(uuid())
-  email           String    @unique
+  id              String  @id @default(uuid())
+  email           String  @unique
   passwordHash    String
   firstName       String?
   lastName        String?
-  isEmailVerified Boolean   @default(false)
-  
-  // System-level role (e.g., SuperAdmin vs Regular)
-  systemRoleId    String?
-  systemRole      SystemRole? @relation(fields: [systemRoleId], references: [id])
+  isEmailVerified Boolean @default(false)
 
-  memberships     OrganizationMember[]
-  invitations     OrganizationInvitation[] @relation("UserInvitations")
-  
+  // System-level role (e.g., SuperAdmin vs Regular)
+  systemRoleId String?
+  systemRole   SystemRole? @relation(fields: [systemRoleId], references: [id])
+
+  memberships OrganizationMember[]
+  invitations OrganizationInvitation[] @relation("UserInvitations")
+
   // The user's active organization preference (optional)
   activeOrganizationId String?
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // System-level logs created by the user
-  auditLogs       AuditLog[]
-  activityLogs    ActivityLog[]
-  createdApiKeys  OrganizationApiKey[] @relation("CreatedApiKeys")
+  auditLogs      AuditLog[]
+  activityLogs   ActivityLog[]
+  createdApiKeys OrganizationApiKey[] @relation("CreatedApiKeys")
 }
 
 model SystemRole {
   id          String   @id @default(uuid())
   name        String   @unique
   description String?
-  permissions Json     // System permissions
+  permissions Json // System permissions
   users       User[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
 model Organization {
-  id          String   @id @default(uuid())
-  name        String
-  
-  members       OrganizationMember[]
-  invitations   OrganizationInvitation[]
-  settings      OrganizationSetting[]
-  
+  id   String @id @default(uuid())
+  name String
+
+  members     OrganizationMember[]
+  invitations OrganizationInvitation[]
+  settings    OrganizationSetting[]
+
   // Resources belonging to the Organization
-  workflows            Workflow[]
-  conversations        Conversation[]
-  documents            Document[]
-  apiKeys              ApiKey[]
-  notifications        Notification[]
-  activityLogs         ActivityLog[]
-  auditLogs            AuditLog[]
-  organizationApiKeys  OrganizationApiKey[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  workflows           Workflow[]
+  conversations       Conversation[]
+  documents           Document[]
+  apiKeys             ApiKey[]
+  notifications       Notification[]
+  activityLogs        ActivityLog[]
+  auditLogs           AuditLog[]
+  organizationApiKeys OrganizationApiKey[]
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  BackgroundJob BackgroundJob[]
 }
 
 model OrganizationRole {
-  id          String   @id @default(uuid())
-  name        String   @unique // e.g., OWNER, ADMIN, MANAGER, MEMBER
+  id          String  @id @default(uuid())
+  name        String  @unique // e.g., OWNER, ADMIN, MANAGER, MEMBER
   description String?
-  permissions Json     // Organization-level permissions
-  
+  permissions Json // Organization-level permissions
+
   members     OrganizationMember[]
   invitations OrganizationInvitation[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model OrganizationMember {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   userId         String
   organizationId String
   roleId         String
-  
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  role           OrganizationRole @relation(fields: [roleId], references: [id])
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role         OrganizationRole @relation(fields: [roleId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, organizationId])
 }
 
 model OrganizationInvitation {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   email          String
   organizationId String
   roleId         String
   inviterId      String
-  token          String   @unique
-  status         String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
-  
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  role           OrganizationRole @relation(fields: [roleId], references: [id])
-  inviter        User             @relation("UserInvitations", fields: [inviterId], references: [id])
-  
-  expiresAt      DateTime
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  token          String @unique
+  status         String @default("PENDING") // PENDING, ACCEPTED, REJECTED
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role         OrganizationRole @relation(fields: [roleId], references: [id])
+  inviter      User             @relation("UserInvitations", fields: [inviterId], references: [id])
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([email, organizationId])
 }
 
 model OrganizationSetting {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
   key            String
   value          Json
-  
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
-  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @updatedAt
 
   @@unique([organizationId, key])
 }
@@ -140,37 +141,49 @@ model OrganizationSetting {
 // ---------------------------------------------------------
 
 model Workflow {
-  id             String        @id @default(uuid())
+  id             String  @id @default(uuid())
   organizationId String
   name           String
   description    String?
   n8nWebhookUrl  String?
-  n8nWorkflowId  String?       // ID in the n8n system
-  isActive       Boolean       @default(false)
-  triggerType    String?       // MANUAL, WEBHOOK, SCHEDULE
-  createdBy      String?       // ID of User who created it
+  n8nWorkflowId  String? // ID in the n8n system
+  isActive       Boolean @default(false)
+  triggerType    String? // MANUAL, WEBHOOK, SCHEDULE
+  createdBy      String? // ID of User who created it
+
+  engine       String  @default("native") // "native" or "n8n"
+  nodes        Json?
+  edges        Json?
+  webhookToken String? @unique
+  versions     Json?
   
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  runs           WorkflowRun[]
-  
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  aiGenerated   Boolean @default(false)
+  aiPrompt      String?
+  aiExplanation String?
+  aiProvider    String?
+  aiModel       String?
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  runs         WorkflowRun[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model WorkflowRun {
-  id             String   @id @default(uuid())
-  workflowId     String
-  status         String   // PENDING, RUNNING, COMPLETED, FAILED
-  durationMs     Int?
-  inputData      Json?
-  outputData     Json?
-  errorDetails   Json?
-  triggeredBy    String?  // ID of User or "System"
-  
-  startedAt      DateTime @default(now())
-  completedAt    DateTime?
-  
-  workflow       Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  id           String  @id @default(uuid())
+  workflowId   String
+  status       String // PENDING, RUNNING, COMPLETED, FAILED
+  durationMs   Int?
+  inputData    Json?
+  outputData   Json?
+  errorDetails Json?
+  triggeredBy  String? // ID of User or "System"
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 }
 
 // ---------------------------------------------------------
@@ -178,30 +191,30 @@ model WorkflowRun {
 // ---------------------------------------------------------
 
 model Conversation {
-  id             String    @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
   userId         String
   title          String
-  provider       String    @default("openai") // openai or ollama
-  
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  messages       Message[]
-  
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  provider       String @default("openai") // openai or ollama
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  messages     Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Message {
-  id             String       @id @default(uuid())
+  id             String @id @default(uuid())
   conversationId String
-  role           String       // user, assistant, system
+  role           String // user, assistant, system
   content        String
-  tokens         Int?         // Total tokens used (prompt + completion)
-  costUsd        Float?       // Estimated cost in USD (labelled as estimate in UI)
-  latencyMs      Int?         // AI response time in milliseconds (assistant messages only)
+  tokens         Int? // Total tokens used (prompt + completion)
+  costUsd        Float? // Estimated cost in USD (labelled as estimate in UI)
+  latencyMs      Int? // AI response time in milliseconds (assistant messages only)
 
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  createdAt      DateTime     @default(now())
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
 }
 
 // ---------------------------------------------------------
@@ -209,72 +222,72 @@ model Message {
 // ---------------------------------------------------------
 
 model Document {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   organizationId String
   uploadedBy     String
   fileName       String
   fileUrl        String
   mimeType       String?
   size           Int?
-  
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ApiKey {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   organizationId String
-  key            String   @unique
+  key            String  @unique
   name           String?
-  
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
-  createdAt      DateTime @default(now())
-  expiresAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
 }
 
 model Notification {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   organizationId String
-  userId         String?  // If null, it's an org-wide notification
-  type           String   // SUCCESS, ERROR, INFO, WARNING
+  userId         String? // If null, it's an org-wide notification
+  type           String // SUCCESS, ERROR, INFO, WARNING
   title          String
   message        String
-  isRead         Boolean  @default(false)
-  
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
-  createdAt      DateTime @default(now())
+  isRead         Boolean @default(false)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 }
 
 model ActivityLog {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   organizationId String?
   userId         String?
   action         String
   details        Json?
-  
-  user           User?    @relation(fields: [userId], references: [id])
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
-  createdAt      DateTime @default(now())
+
+  user         User?         @relation(fields: [userId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 }
 
 model AuditLog {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   organizationId String?
   userId         String?
   resource       String
   action         String
   oldData        Json?
   newData        Json?
-  
-  user           User?    @relation(fields: [userId], references: [id])
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
-  createdAt      DateTime @default(now())
+
+  user         User?         @relation(fields: [userId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 }
 
 // ---------------------------------------------------------
@@ -282,27 +295,83 @@ model AuditLog {
 // ---------------------------------------------------------
 
 model OrganizationApiKey {
-  id              String    @id @default(uuid())
-  organizationId  String
-  provider        String    // openai | gemini | anthropic | azure-openai
-  model           String?   // Default model for this provider key
-  label           String    // Human-readable name, e.g. "Production OpenAI Key"
-  encryptedKey    String    // AES-256-GCM encrypted — NEVER store plaintext
-  keyHint         String    // Last 4 chars of the original key for display only
-  status          String    @default("ACTIVE")  // ACTIVE | INACTIVE | INVALID
-  isDefault       Boolean   @default(false)
-  createdBy       String    // userId who added this key
+  id             String  @id @default(uuid())
+  organizationId String
+  provider       String // openai | gemini | anthropic | azure-openai
+  model          String? // Default model for this provider key
+  label          String // Human-readable name, e.g. "Production OpenAI Key"
+  encryptedKey   String // AES-256-GCM encrypted — NEVER store plaintext
+  keyHint        String // Last 4 chars of the original key for display only
+  status         String  @default("ACTIVE") // ACTIVE | INACTIVE | INVALID
+  isDefault      Boolean @default(false)
+  createdBy      String // userId who added this key
 
   lastUsedAt      DateTime?
   lastValidatedAt DateTime?
 
-  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  creator         User         @relation("CreatedApiKeys", fields: [createdBy], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator      User         @relation("CreatedApiKeys", fields: [createdBy], references: [id])
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([organizationId, provider, label])
   @@index([organizationId, provider])
   @@index([organizationId, provider, isDefault])
+}
+
+// ---------------------------------------------------------
+// Background Jobs
+// ---------------------------------------------------------
+
+model BackgroundJob {
+  id             String    @id @default(uuid())
+  organizationId String?
+  type           String
+  payload        Json?
+  status         String    @default("PENDING")
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(3)
+  error          String?
+  startedAt      DateTime?
+  completedAt    DateTime?
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
+
+// ── Password Reset Tokens (legacy token-link flow) ───────────────────────────
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+// ── Password Reset OTP (new OTP-based flow) ───────────────────────────────────
+model PasswordResetOtp {
+  id               String    @id @default(uuid())
+  userId           String
+  email            String
+  otpHash          String    // bcrypt hash of the 6-digit OTP
+  expiresAt        DateTime
+  used             Boolean   @default(false)
+  usedAt           DateTime?
+  attempts         Int       @default(0) // failed verify attempts
+  resetToken       String?   @unique     // short-lived token issued after OTP verified
+  resetTokenExpiry DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([email])
+  @@index([userId])
+  @@index([resetToken])
 }

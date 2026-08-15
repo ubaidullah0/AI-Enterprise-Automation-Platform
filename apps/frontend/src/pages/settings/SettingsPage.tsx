@@ -6,6 +6,7 @@ import {
   CheckCircle2, AlertTriangle, Info, ChevronRight, Building2, Key
 } from 'lucide-react';
 import ApiKeyManager from './components/ApiKeyManager';
+import JobQueueManager from './components/JobQueueManager';
 
 interface UsageData {
   usage: {
@@ -49,6 +50,7 @@ const UsageBar = ({ value, max, label, pct }: { value: number; max: number; labe
 const TAB_ICONS: Record<string, React.ElementType> = {
   organization: Building2,
   'api-keys': Key,
+  jobs: Activity,
   usage: Zap,
   audit: Shield,
   security: Settings2,
@@ -88,6 +90,7 @@ export default function SettingsPage() {
   const tabs = [
     { id: 'organization', label: 'Organization' },
     { id: 'api-keys', label: 'API Keys' },
+    { id: 'jobs', label: 'Background Jobs' },
     { id: 'usage', label: 'AI Usage' },
     { id: 'audit', label: 'Audit Logs' },
     { id: 'security', label: 'Security' },
@@ -187,6 +190,11 @@ export default function SettingsPage() {
 
           {/* ── API Keys Tab ────────────────────────────────────────── */}
           {activeTab === 'api-keys' && <ApiKeyManager />}
+
+          {/* BACKGROUND JOBS TAB */}
+          {activeTab === 'jobs' && (
+            <JobQueueManager />
+          )}
 
           {/* ── AI Usage Tab ─────────────────────────────────────────── */}
           {activeTab === 'usage' && (

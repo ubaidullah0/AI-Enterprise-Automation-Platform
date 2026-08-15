@@ -64,9 +64,6 @@ services:
       DB_POSTGRESDB_DATABASE: ${POSTGRES_DB:-automation_platform}
       DB_POSTGRESDB_USER: ${POSTGRES_USER:-postgres}
       DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:-password123}
-      N8N_BASIC_AUTH_ACTIVE: "true"
-      N8N_BASIC_AUTH_USER: ${N8N_USER:-admin}
-      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD:-admin}
     ports:
       - "5680:5678"
     depends_on:

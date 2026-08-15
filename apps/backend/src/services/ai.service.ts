@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { estimateCost } from './analytics.service';
 
 export interface AICompletionOptions {
   model?: string;
@@ -11,7 +12,7 @@ export interface AICompletionOptions {
 }
 
 export interface ChatMessage {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
 }
 
@@ -19,6 +20,12 @@ export abstract class AIProvider {
   abstract generateText(prompt: string, options?: AICompletionOptions): Promise<string>;
   abstract generateChatResponse(messages: ChatMessage[], options?: AICompletionOptions): Promise<string>;
   abstract streamChatResponse(messages: ChatMessage[], onToken: (token: string) => void, options?: AICompletionOptions): Promise<void>;
+
+  async generateChatResponseWithUsage(messages: ChatMessage[], options?: AICompletionOptions): Promise<{ response: string; tokensUsed: number | null; latencyMs: number }> {
+    const start = Date.now();
+    const response = await this.generateChatResponse(messages, options);
+    return { response, tokensUsed: null, latencyMs: Date.now() - start };
+  }
 }
 
 // ─── Ollama Provider ─────────────────────────────────────────────────────────
@@ -96,6 +103,28 @@ export class OpenAIProvider extends AIProvider {
     return response.choices[0].message?.content || '';
   }
 
+  async generateChatResponseWithUsage(messages: ChatMessage[], options?: AICompletionOptions): Promise<{ response: string; tokensUsed: number | null; latencyMs: number }> {
+    const start = Date.now();
+    const systemMsg: OpenAI.Chat.ChatCompletionMessageParam = {
+      role: 'system',
+      content: options?.systemPrompt || 'You are a helpful enterprise AI assistant. Be concise, professional, and informative.'
+    };
+    const chatMessages: OpenAI.Chat.ChatCompletionMessageParam[] = messages.map(m => ({ role: m.role, content: m.content }));
+    const response = await this.openai.chat.completions.create({
+      model: options?.model || 'gpt-4o',
+      messages: [systemMsg, ...chatMessages],
+      temperature: options?.temperature ?? 0.7,
+      max_tokens: options?.maxTokens,
+    });
+    const latencyMs = Date.now() - start;
+    const tokensUsed = response.usage?.total_tokens ?? null;
+    return {
+      response: response.choices[0].message?.content || '',
+      tokensUsed,
+      latencyMs
+    };
+  }
+
   async streamChatResponse(messages: ChatMessage[], onToken: (token: string) => void, options?: AICompletionOptions): Promise<void> {
     const systemMsg: OpenAI.Chat.ChatCompletionMessageParam = {
       role: 'system',
@@ -162,6 +191,38 @@ export class GeminiProvider extends AIProvider {
     return result.response.text();
   }
 
+  async generateChatResponseWithUsage(messages: ChatMessage[], options?: AICompletionOptions): Promise<{ response: string; tokensUsed: number | null; latencyMs: number }> {
+    const start = Date.now();
+    const modelName = options?.model || 'gemini-2.0-flash';
+    const model = this.genAI.getGenerativeModel({
+      model: modelName,
+      systemInstruction: options?.systemPrompt || 'You are an expert enterprise AI assistant. Help users manage workflows, automations, and business processes. Be professional, concise, and helpful. Format code in markdown code blocks.'
+    });
+
+    const history = messages.slice(0, -1).map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }));
+
+    const lastMessage = messages[messages.length - 1];
+    const chat = model.startChat({
+      history,
+      generationConfig: {
+        temperature: options?.temperature ?? 0.7,
+        maxOutputTokens: options?.maxTokens ?? 2048,
+      }
+    });
+
+    const result = await chat.sendMessage(lastMessage.content);
+    const latencyMs = Date.now() - start;
+    const tokensUsed = result.response.usageMetadata?.totalTokenCount ?? null;
+    return {
+      response: result.response.text(),
+      tokensUsed,
+      latencyMs
+    };
+  }
+
   async streamChatResponse(messages: ChatMessage[], onToken: (token: string) => void, options?: AICompletionOptions): Promise<void> {
     const modelName = options?.model || 'gemini-2.0-flash';
     const model = this.genAI.getGenerativeModel({ model: modelName });
@@ -196,6 +257,32 @@ export class AIService {
 
   async chat(providerName: string, messages: ChatMessage[], options?: AICompletionOptions): Promise<string> {
     return this.getProvider(providerName, options?.apiKey).generateChatResponse(messages, options);
+  }
+
+  async streamChat(providerName: string, messages: ChatMessage[], onToken: (token: string) => void, options?: AICompletionOptions): Promise<void> {
+    return this.getProvider(providerName, options?.apiKey).streamChatResponse(messages, onToken, options);
+  }
+
+  async chatWithUsage(providerName: string, messages: ChatMessage[], options?: AICompletionOptions): Promise<{
+    response: string;
+    tokensUsed: number | null;
+    costUsd: number | null;
+    latencyMs: number;
+  }> {
+    const provider = this.getProvider(providerName, options?.apiKey);
+    const result = await provider.generateChatResponseWithUsage(messages, options);
+    
+    let costUsd: number | null = null;
+    if (result.tokensUsed != null) {
+      costUsd = estimateCost(providerName, options?.model || null, result.tokensUsed);
+    }
+    
+    return {
+      response: result.response,
+      tokensUsed: result.tokensUsed,
+      costUsd,
+      latencyMs: result.latencyMs
+    };
   }
 }
 

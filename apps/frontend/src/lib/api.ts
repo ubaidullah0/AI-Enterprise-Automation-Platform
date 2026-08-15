@@ -1,12 +1,24 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
-// Single axios instance — baseURL includes /api/v1 so all routes just use /auth/..., /workflows/..., etc.
+/**
+ * Central Axios instance.
+ *
+ * Uses a RELATIVE base URL ('/api/v1') so that requests go through
+ * Vite's dev proxy → backend at localhost:4000.
+ *
+ * This means it works on ANY port Vite picks (5173, 5174, etc.)
+ * and in production (where the reverse proxy handles /api/v1).
+ *
+ * Never hardcode 'http://localhost:4000' here — that bypasses the
+ * proxy and breaks CORS when Vite is on a different port.
+ */
 const api = axios.create({
-  baseURL: 'http://localhost:4000/api/v1',
+  baseURL: '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 // ─── Request Interceptor ──────────────────────────────────────────────────────

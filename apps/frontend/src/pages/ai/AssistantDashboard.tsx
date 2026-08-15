@@ -3,8 +3,9 @@ import { useAuthStore } from '../../store/authStore';
 import api from '../../lib/api';
 import ReactMarkdown from 'react-markdown';
 import {
-  Send, Bot, User, MessageSquare, Plus, Loader2, Trash2, Sparkles, ChevronDown
+  Send, Bot, User, MessageSquare, Plus, Loader2, Trash2, Sparkles, ChevronDown, Menu
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Conversation {
   id: string;
@@ -19,11 +20,11 @@ interface Message {
   content: string;
 }
 
-const PROVIDERS = [
-  { id: 'openai', name: 'GPT-4o', color: 'from-emerald-500 to-teal-400' },
-  // Gemini: add back once a billing-enabled key is configured
-  // { id: 'gemini', name: 'Gemini 2.0 Flash', color: 'from-blue-500 to-cyan-400' },
-];
+interface AIProvider {
+  id: string;
+  name: string;
+  color: string;
+}
 
 const providerBadge: Record<string, string> = {
   gemini: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -39,12 +40,33 @@ export default function AssistantDashboard() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [providers, setProviders] = useState<AIProvider[]>([]);
   const [provider, setProvider] = useState('openai');
   const [providerOpen, setProviderOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const activeProvider = PROVIDERS.find(p => p.id === provider) || PROVIDERS[0];
+  const [providersLoading, setProvidersLoading] = useState(true);
+
+  const activeProvider = providers.find(p => p.id === provider) || providers[0] || 
+    (providersLoading ? { id: 'loading', name: 'Loading Providers...', color: 'from-gray-500 to-gray-400' } : { id: 'none', name: 'No Provider Configured', color: 'from-red-500 to-red-400' });
+
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        const res = await api.get('/ai/providers');
+        setProviders(res.data.data);
+        if (res.data.data.length > 0 && !res.data.data.find((p: AIProvider) => p.id === provider)) {
+          setProvider(res.data.data[0].id);
+        }
+      } catch (err) {
+        console.error('Failed to fetch providers', err);
+      } finally {
+        setProvidersLoading(false);
+      }
+    };
+    fetchProviders();
+  }, []);
 
   useEffect(() => {
     if (user?.activeOrganizationId) fetchConversations();
@@ -123,33 +145,91 @@ export default function AssistantDashboard() {
     setLoading(true);
 
     try {
-      const res = await api.post('/ai/chat', {
-        prompt: userContent,
-        conversationId: activeConversationId,
-        provider,
+      const authToken = useAuthStore.getState().accessToken;
+      const response = await fetch('/api/v1/ai/chat/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+          'x-organization-id': user.activeOrganizationId,
+        },
+        body: JSON.stringify({
+          prompt: userContent,
+          conversationId: activeConversationId,
+          provider,
+        })
       });
 
-      if (res.data.success) {
-        if (!activeConversationId) {
-          setActiveConversationId(res.data.data.conversationId);
-          fetchConversations();
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to communicate with AI');
+      }
+
+      // Add a placeholder message for the assistant's stream
+      const tempMessageId = (Date.now() + 1).toString();
+      setMessages(prev => [...prev, {
+        id: tempMessageId,
+        role: 'assistant' as const,
+        content: ''
+      }]);
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      if (!reader) throw new Error('No readable stream');
+
+      let currentText = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6);
+            if (!dataStr) continue;
+            
+            try {
+              const data = JSON.parse(dataStr);
+              if (data.error) throw new Error(data.error);
+              if (data.token) {
+                currentText += data.token;
+                setMessages(prev => prev.map(msg => 
+                  msg.id === tempMessageId ? { ...msg, content: currentText } : msg
+                ));
+              }
+              if (data.done) {
+                if (!activeConversationId) {
+                  setActiveConversationId(data.conversationId);
+                  fetchConversations();
+                }
+                setMessages(prev => prev.map(msg => 
+                  msg.id === tempMessageId ? { ...msg, id: data.messageId } : msg
+                ));
+              }
+            } catch (e) {
+              console.error('SSE JSON parse error', e, dataStr);
+            }
+          }
         }
-        setMessages(prev => [...prev, {
-          id: res.data.data.messageId || (Date.now() + 1).toString(),
-          role: 'assistant' as const,
-          content: res.data.data.response
-        }]);
       }
     } catch (error: any) {
-      const errMsg = error.response?.data?.message || error.message || 'Unknown error';
+      const isNetworkError = !error.response && (error.message?.includes('fetch') || error.message?.includes('network') || error.message?.includes('Failed'));
+      const errMsg = isNetworkError
+        ? 'Cannot connect to the backend server. Make sure the backend is running on port 4000.'
+        : error.message || 'Unknown error';
       setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
+        id: Date.now().toString(),
         role: 'assistant' as const,
-        content: `⚠️ **Error:** ${errMsg}\n\nCheck that your API keys are set in the backend .env file and the selected provider is configured.`
+        content: `⚠️ **Error:** ${errMsg}\n\nPlease check your configuration or try again.`
       }]);
     } finally {
       setLoading(false);
     }
+
   };
 
   const SUGGESTED_PROMPTS = [
@@ -160,17 +240,23 @@ export default function AssistantDashboard() {
   ];
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] border border-gray-800 rounded-xl overflow-hidden shadow-2xl" style={{ background: 'linear-gradient(135deg, #0a0a0f 0%, #0d1117 100%)' }}>
+    <div className="flex h-[calc(100vh-8rem)] border border-gray-800 rounded-xl overflow-hidden shadow-2xl relative" style={{ background: 'linear-gradient(135deg, #0a0a0f 0%, #0d1117 100%)' }}>
 
       {/* ── Sidebar ─────────────────────────────────────────────────────────── */}
-      <div className="w-72 bg-gray-900/80 border-r border-gray-800 flex flex-col backdrop-blur-md">
-        <div className="p-4 border-b border-gray-800">
+      <div className={`absolute z-10 md:relative w-72 h-full bg-gray-900/95 md:bg-gray-900/80 border-r border-gray-800 flex-col backdrop-blur-md transition-transform duration-300 ${providerOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} flex`}>
+        <div className="p-4 border-b border-gray-800 flex items-center justify-between">
           <button
             onClick={handleNewChat}
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-semibold px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-500/10"
+            className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-semibold px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-500/10"
           >
             <Plus size={18} />
             New Chat
+          </button>
+          <button 
+            className="md:hidden ml-2 p-2.5 rounded-xl bg-gray-800 text-gray-400"
+            onClick={() => setProviderOpen(false)}
+          >
+            <Menu size={18} />
           </button>
         </div>
 
@@ -207,12 +293,18 @@ export default function AssistantDashboard() {
       </div>
 
       {/* ── Main Chat Area ──────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
 
         {/* Header */}
-        <div className="h-14 border-b border-gray-800 bg-gray-900/40 backdrop-blur-md px-6 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
-            <Sparkles size={18} className="text-blue-400" />
+        <div className="h-14 border-b border-gray-800 bg-gray-900/40 backdrop-blur-md px-4 md:px-6 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <button 
+              className="md:hidden p-1.5 rounded-lg bg-gray-800/50 text-gray-400 hover:text-white"
+              onClick={() => setProviderOpen(true)}
+            >
+              <Menu size={18} />
+            </button>
+            <Sparkles size={18} className="text-blue-400 hidden sm:block" />
             <span className="font-semibold text-gray-200">AI Assistant</span>
           </div>
 
@@ -231,19 +323,25 @@ export default function AssistantDashboard() {
                 <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-700">
                   Select Provider
                 </div>
-                {PROVIDERS.map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => { setProvider(p.id); setProviderOpen(false); }}
-                    className={`w-full text-left flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
-                      provider === p.id ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-750'
-                    }`}
-                  >
-                    <div className={`w-2.5 h-2.5 rounded-full bg-gradient-to-r ${p.color} shrink-0`} />
-                    {p.name}
-                    {provider === p.id && <span className="ml-auto text-xs text-blue-400">Active</span>}
-                  </button>
-                ))}
+                <div className="py-2">
+                  {providersLoading ? (
+                    <div className="px-4 py-2 text-sm text-gray-400">Loading...</div>
+                  ) : providers.length === 0 ? (
+                    <div className="px-4 py-2 text-sm text-gray-400">No providers configured in Settings.</div>
+                  ) : (
+                    providers.map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => { setProvider(p.id); setProviderOpen(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-gray-700/50 transition-colors ${provider === p.id ? 'text-white bg-gray-700/30' : 'text-gray-300'}`}
+                      >
+                        <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${p.color}`} />
+                        {p.name}
+                        {provider === p.id && <span className="ml-auto text-xs text-blue-400">Active</span>}
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -273,33 +371,41 @@ export default function AssistantDashboard() {
               </div>
             </div>
           ) : (
-            messages.map(msg => (
-              <div key={msg.id} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {msg.role === 'assistant' && (
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-br ${activeProvider.color} shadow-lg`}>
-                    <Bot size={18} className="text-white" />
-                  </div>
-                )}
-                <div className={`max-w-[75%] px-5 py-4 rounded-2xl text-sm leading-relaxed ${
-                  msg.role === 'user'
-                    ? 'bg-blue-600 text-white rounded-br-sm'
-                    : 'bg-gray-900 border border-gray-800 text-gray-200 rounded-bl-sm'
-                }`}>
-                  {msg.role === 'assistant' ? (
-                    <div className="prose prose-invert prose-sm max-w-none prose-pre:bg-gray-950 prose-pre:border prose-pre:border-gray-700 prose-code:bg-gray-800 prose-code:px-1 prose-code:rounded">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+            <AnimatePresence initial={false}>
+              {messages.map((msg) => (
+                <motion.div 
+                  key={msg.id} 
+                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.3, type: "spring", bounce: 0.4 }}
+                  className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  {msg.role === 'assistant' && (
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-br ${activeProvider.color} shadow-lg`}>
+                      <Bot size={18} className="text-white" />
                     </div>
-                  ) : (
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
                   )}
-                </div>
-                {msg.role === 'user' && (
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-tr from-blue-500 to-purple-500 shadow-lg">
-                    <User size={18} className="text-white" />
+                  <div className={`max-w-[85%] md:max-w-[75%] px-5 py-4 rounded-2xl text-sm leading-relaxed overflow-x-auto ${
+                    msg.role === 'user'
+                      ? 'bg-blue-600 text-white rounded-br-sm shadow-md'
+                      : 'bg-gray-900 border border-gray-800 text-gray-200 rounded-bl-sm shadow-md'
+                  }`}>
+                    {msg.role === 'assistant' ? (
+                      <div className="prose prose-invert prose-sm max-w-none prose-pre:bg-gray-950 prose-pre:border prose-pre:border-gray-700 prose-code:bg-gray-800 prose-code:px-1 prose-code:rounded">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    )}
                   </div>
-                )}
-              </div>
-            ))
+                  {msg.role === 'user' && (
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-tr from-blue-500 to-purple-500 shadow-lg">
+                      <User size={18} className="text-white" />
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
           )}
 
           {/* Loading Indicator */}

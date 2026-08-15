@@ -6,9 +6,12 @@ class N8nService {
   constructor() {
     this.client = axios.create({
       baseURL: process.env.N8N_URL ? `${process.env.N8N_URL}/api/v1` : 'http://localhost:5678/api/v1',
-      headers: {
-        'X-N8N-API-KEY': process.env.N8N_API_KEY || 'dummy-key',
-      }
+    });
+
+    // Read API key dynamically on every request so .env changes are always used
+    this.client.interceptors.request.use((config) => {
+      config.headers['X-N8N-API-KEY'] = process.env.N8N_API_KEY || '';
+      return config;
     });
   }
 
@@ -27,7 +30,7 @@ class N8nService {
       name,
       nodes,
       connections,
-      active: false
+      settings: {}
     });
     return res.data;
   }

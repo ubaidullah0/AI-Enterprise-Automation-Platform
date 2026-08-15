@@ -14,7 +14,11 @@ import aiRoutes from './routes/ai.routes';
 import notificationRoutes from './routes/notification.routes';
 import auditRoutes from './routes/audit.routes';
 import orgApiKeyRoutes from './routes/org-api-keys.routes';
-
+import analyticsRoutes from './routes/analytics.routes';
+import webhookRoutes from './routes/webhook.routes';
+import documentRoutes from './routes/documents.routes';
+import jobsRoutes from './routes/jobs.routes';
+import { jobQueueService } from './services/jobs/job-queue.service';
 dotenv.config();
 
 const app = express();
@@ -33,7 +37,22 @@ const logger = pino({
 // ─── Global Middleware ────────────────────────────────────────────────────────
 app.use(helmet());
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: (origin, callback) => {
+    // No origin = curl / Postman / mobile — allow
+    if (!origin) return callback(null, true);
+
+    // In development: allow any localhost port (covers 5173, 5174, 5175, ...)
+    const isLocalhost = /^http:\/\/localhost:\d+$/.test(origin)
+      || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin);
+    if (isLocalhost) return callback(null, true);
+
+    // In production: only allow the configured FRONTEND_URL / CORS_ORIGINS
+    const rawList = process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '';
+    const allowed = rawList.split(',').map((s: string) => s.trim()).filter(Boolean);
+    if (allowed.includes(origin)) return callback(null, true);
+
+    callback(new Error(`CORS: origin '${origin}' is not allowed`));
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -50,8 +69,12 @@ app.use('/api/v1/org-api-keys', orgApiKeyRoutes);
 app.use('/api/v1/orgs', orgRoutes);
 app.use('/api/v1/workflows', workflowRoutes);
 app.use('/api/v1/ai', aiRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/webhooks', webhookRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/audit-logs', auditRoutes);
+app.use('/api/v1/documents', documentRoutes);
+app.use('/api/v1/jobs', jobsRoutes);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/api/v1/health', async (req: Request, res: Response) => {
@@ -99,5 +122,37 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 app.listen(port, () => {
   logger.info(`Backend server is running on http://localhost:${port}`);
   logger.info(`Swagger docs available at http://localhost:${port}/api-docs`);
+  
+  // Start background job queue if not explicitly disabled
+  if (process.env.WORKER_ENABLED !== 'false') {
+    jobQueueService.queue.start().catch(err => {
+      logger.error({ err }, 'Failed to start background job queue');
+    });
+
+    // Register handlers for background jobs
+    jobQueueService.queue.process('TEST_HEAVY_TASK', async (job) => {
+      logger.info(`Executing TEST_HEAVY_TASK for job ${job.id}`);
+      // Simulate heavy work
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      logger.info(`Completed TEST_HEAVY_TASK for job ${job.id}`);
+      
+      // We can also trigger a notification when it succeeds
+      if (job.organizationId) {
+        // Just demonstrating cross-service usage. We'd ideally need the user ID here,
+        // which we passed in the payload.
+        const payload = job.payload as any;
+        if (payload?.userId) {
+          const { notificationService } = require('./services/notification.service');
+          await notificationService.notifyUser(
+            payload.userId,
+            job.organizationId,
+            'SUCCESS',
+            'Test Job Completed',
+            'Your heavy background task has finished successfully.'
+          );
+        }
+      }
+    });
+  }
 });
 
