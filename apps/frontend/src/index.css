@@ -79,3 +79,29 @@
     @apply bg-gray-700/50 rounded-full hover:bg-gray-600/80 transition-colors;
   }
 }
+
+/* ── Light Mode (Day) overrides ─────────────────────────────────────────── */
+html.light-mode {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+html.light-mode body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+html.light-mode .bg-gray-950 { background-color: #f1f5f9 !important; }
+html.light-mode .bg-gray-900 { background-color: #ffffff !important; }
+html.light-mode .bg-gray-900\/70 { background-color: rgba(255,255,255,0.9) !important; }
+html.light-mode .border-gray-800 { border-color: #e2e8f0 !important; }
+html.light-mode .border-gray-800\/50 { border-color: rgba(226,232,240,0.6) !important; }
+html.light-mode .text-white { color: #0f172a !important; }
+html.light-mode .text-gray-400 { color: #475569 !important; }
+html.light-mode .text-gray-500 { color: #64748b !important; }
+html.light-mode .text-gray-300 { color: #334155 !important; }
+html.light-mode .text-gray-600 { color: #475569 !important; }
+html.light-mode .bg-gray-800 { background-color: #e2e8f0 !important; }
+html.light-mode .bg-gray-800\/40 { background-color: rgba(226,232,240,0.5) !important; }
+html.light-mode .hover\:bg-gray-800\/40:hover { background-color: rgba(226,232,240,0.5) !important; }
+html.light-mode header { background-color: rgba(248,250,252,0.95) !important; border-bottom-color: #e2e8f0 !important; }
+html.light-mode .bg-gray-950\/95 { background-color: rgba(241,245,249,0.97) !important; }
+html.light-mode ::-webkit-scrollbar-thumb { background-color: rgba(148,163,184,0.5) !important; }

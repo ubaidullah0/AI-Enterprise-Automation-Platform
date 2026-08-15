@@ -120,14 +120,9 @@ export const createWorkflow = async (req: Request, res: Response) => {
         const n8nResult = await n8nService.createWorkflow(`[${organizationId.slice(0, 8)}] ${name}`) as any;
         n8nWorkflowId = String(n8nResult.id);
       } catch (n8nError: any) {
-        console.warn('Could not create workflow in n8n (is it running and API key configured?)', n8nError?.message);
-        if (!process.env.N8N_API_KEY) {
-          return res.status(401).json({ 
-            success: false, 
-            message: 'n8n API Key is missing or invalid. Please generate an API Key in your n8n dashboard and add it to apps/backend/.env as N8N_API_KEY.' 
-          });
-        }
-        return res.status(500).json({ success: false, message: 'Failed to create n8n workflow. Ensure n8n is running.' });
+        // n8n is optional — if not configured, silently save as native workflow
+        console.warn('[n8n] Not available, falling back to native engine:', n8nError?.message);
+        // Do NOT return error — just save workflow locally with native engine
       }
     }
 

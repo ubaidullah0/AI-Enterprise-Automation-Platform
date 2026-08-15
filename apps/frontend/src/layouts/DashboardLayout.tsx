@@ -2,7 +2,8 @@ import { Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import {
   LayoutDashboard, Users, Settings, LogOut, Menu, Zap, Sparkles,
-  ChevronDown, Plus, Building2, Check, BarChart2, ShieldCheck, Folder, X
+  ChevronDown, Plus, Building2, Check, BarChart2, ShieldCheck, Folder, X,
+  Sun, Moon
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
@@ -16,6 +17,20 @@ export default function DashboardLayout() {
   const [showCreateOrg, setShowCreateOrg] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
   const [creatingOrg, setCreatingOrg] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return localStorage.getItem('theme') !== 'light';
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDarkMode) {
+      root.classList.remove('light-mode');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      root.classList.add('light-mode');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
 
   // Refresh user data on mount (fixes legacy accounts with no org)
   useEffect(() => {
@@ -298,6 +313,23 @@ export default function DashboardLayout() {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
+            {/* Day / Night toggle */}
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-110 border border-gray-700 hover:border-gray-500"
+              style={{
+                background: isDarkMode
+                  ? 'linear-gradient(135deg, #1e1b4b, #312e81)'
+                  : 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                color: isDarkMode ? '#a5b4fc' : '#d97706',
+                boxShadow: isDarkMode ? '0 0 12px rgba(165,180,252,0.2)' : '0 0 12px rgba(251,191,36,0.4)'
+              }}
+            >
+              {isDarkMode
+                ? <Moon size={16} />
+                : <Sun size={16} />}
+            </button>
             <NotificationBell />
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-violet-600 flex items-center justify-center text-xs font-bold shadow-lg shadow-violet-500/20">
