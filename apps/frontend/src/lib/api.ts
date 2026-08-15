@@ -13,8 +13,13 @@ import { useAuthStore } from '../store/authStore';
  * Never hardcode 'http://localhost:4000' here — that bypasses the
  * proxy and breaks CORS when Vite is on a different port.
  */
+let baseURL = import.meta.env.VITE_API_URL || '/api/v1';
+if (baseURL.startsWith('http') && !baseURL.endsWith('/api/v1')) {
+  baseURL = `${baseURL.replace(/\/$/, '')}/api/v1`;
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api/v1',
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },
