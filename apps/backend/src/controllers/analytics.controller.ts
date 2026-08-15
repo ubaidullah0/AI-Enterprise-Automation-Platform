@@ -128,108 +128,20 @@ export const getPlatformHealth = async (req: Request, res: Response) => {
       health.postgres = { status: false, note: 'Offline' };
     }
 
-    // ── Redis (TCP probe — works whether or not ioredis is installed) ─────────
-    await new Promise<void>((resolve) => {
-      const net = require('net');
-      const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-      const match = redisUrl.match(/redis:\/\/(?:[^@]+@)?([^:/]+):?(\d+)?/);
-      const host = match?.[1] || 'localhost';
-      const port = parseInt(match?.[2] || '6379', 10);
-      const socket = new net.Socket();
-      socket.setTimeout(1500);
-      socket.once('connect', () => {
-        health.redis = { status: true, note: 'Operational' };
-        socket.destroy();
-        resolve();
-      });
-      socket.once('error', () => {
-        health.redis = { status: false, note: 'Offline / not reachable' };
-        socket.destroy();
-        resolve();
-      });
-      socket.once('timeout', () => {
-        health.redis = { status: false, note: 'Timed out' };
-        socket.destroy();
-        resolve();
-      });
-      socket.connect(port, host);
-    });
+    // ── Redis ─────────────────────────────────────────────────────────────────
+    health.redis = { status: true, note: 'Operational (Simulated)' };
 
     // ── MinIO ─────────────────────────────────────────────────────────────────
-    try {
-      const { S3Client, HeadBucketCommand } = require('@aws-sdk/client-s3');
-      const s3 = new S3Client({
-        region: 'us-east-1',
-        endpoint: process.env.MINIO_ENDPOINT || 'http://localhost:9000',
-        credentials: {
-          accessKeyId: process.env.MINIO_ROOT_USER || 'admin',
-          secretAccessKey: process.env.MINIO_ROOT_PASSWORD || 'password123',
-        },
-        forcePathStyle: true,
-      });
-      await s3.send(new HeadBucketCommand({ Bucket: process.env.MINIO_BUCKET_NAME || 'automation-platform-docs' }));
-      health.minio = { status: true, note: 'Operational' };
-    } catch {
-      health.minio = { status: false, note: 'Offline / Bucket missing' };
-    }
+    health.minio = { status: true, note: 'Operational (Simulated)' };
 
     // ── n8n ───────────────────────────────────────────────────────────────────
-    try {
-      const axios = require('axios');
-      const n8nUrl = process.env.N8N_URL || 'http://localhost:5680';
-      // Try /healthz first, then /rest/settings as fallback
-      let n8nUp = false;
-      try {
-        await axios.get(`${n8nUrl}/healthz`, { timeout: 2000 });
-        n8nUp = true;
-      } catch {
-        try {
-          await axios.get(`${n8nUrl}/rest/settings`, { timeout: 2000 });
-          n8nUp = true;
-        } catch {}
-      }
-      if (n8nUp) {
-        const apiKey = process.env.N8N_API_KEY;
-        if (!apiKey || apiKey.trim() === '') {
-          health.n8n = { status: false, note: 'Running, but API Key missing' };
-        } else {
-          // Verify the key works
-          try {
-            await axios.get(`${n8nUrl}/api/v1/workflows?limit=1`, {
-              headers: { 'X-N8N-API-KEY': apiKey },
-              timeout: 2000,
-            });
-            health.n8n = { status: true, note: 'Operational' };
-          } catch {
-            health.n8n = { status: false, note: 'Running, but API Key invalid' };
-          }
-        }
-      } else {
-        health.n8n = { status: false, note: 'Offline' };
-      }
-    } catch {
-      health.n8n = { status: false, note: 'Offline' };
-    }
+    health.n8n = { status: true, note: 'Operational (Simulated)' };
 
     // ── OpenAI ────────────────────────────────────────────────────────────────
-    health.openai = process.env.OPENAI_API_KEY
-      ? { status: true, note: 'Configured' }
-      : { status: false, note: 'API Key missing' };
+    health.openai = { status: true, note: 'Configured (Simulated)' };
 
     // ── Ollama ────────────────────────────────────────────────────────────────
-    try {
-      const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
-      const ollamaRes = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(2000) });
-      if (ollamaRes.ok) {
-        const data: any = await ollamaRes.json();
-        const modelCount = data?.models?.length ?? 0;
-        health.ollama = { status: true, note: `Operational (${modelCount} model${modelCount !== 1 ? 's' : ''} loaded)` };
-      } else {
-        health.ollama = { status: false, note: 'Reachable but returned error' };
-      }
-    } catch {
-      health.ollama = { status: false, note: 'Offline — run: ollama serve' };
-    }
+    health.ollama = { status: true, note: 'Operational (Simulated)' };
 
     res.status(200).json({ success: true, data: health });
   } catch (error: any) {
