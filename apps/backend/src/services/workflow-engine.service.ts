@@ -1,6 +1,5 @@
 import { prisma } from '../utils/prisma';
 import { AIService } from './ai.service';
-import axios from 'axios';
 
 export class WorkflowEngine {
   // Evaluates a single node
@@ -40,10 +39,15 @@ export class WorkflowEngine {
         }
         
         try {
-          const res = await axios({ method, url, headers, data: requestBody });
-          return { status: res.status, data: res.data };
+          const fetchRes = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json', ...headers },
+            body: requestBody ? JSON.stringify(requestBody) : undefined,
+          });
+          const responseData = await fetchRes.json().catch(() => null);
+          return { status: fetchRes.status, data: responseData };
         } catch (e: any) {
-          return { error: e.message, response: e.response?.data };
+          return { error: e.message };
         }
 
       case 'action_ai':
