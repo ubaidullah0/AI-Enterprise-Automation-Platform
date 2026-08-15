@@ -398,7 +398,13 @@ export const forgotPasswordOtp = async (req: Request, res: Response) => {
     });
 
     sendOtpEmail(normalizedEmail, otp, user.firstName)
-      .then((sent) => { console.info(`[OTP] ${sent ? 'Sent' : 'FAILED'} to ${normalizedEmail}`); })
+      .then((sent) => { 
+        if (!sent) {
+          console.warn(`[OTP-WARNING] SMTP not configured. The OTP for ${normalizedEmail} is: ${otp}`);
+        } else {
+          console.info(`[OTP] Sent to ${normalizedEmail}`); 
+        }
+      })
       .catch((err) => console.error('[OTP] email error:', err));
 
     return res.status(200).json({ success: true, message: 'Verification code sent to your email.' });
