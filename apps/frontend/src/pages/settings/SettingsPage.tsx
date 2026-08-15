@@ -325,8 +325,8 @@ export default function SettingsPage() {
                     { label: 'Role-Based Access Control', status: true, note: 'OWNER / ADMIN / MANAGER / MEMBER' },
                     { label: 'AI Rate Limiting', status: true, note: '200 requests/day per organization' },
                     { label: 'Audit Logging', status: true, note: 'All create/update/delete actions logged' },
-                    { label: 'HTTPS / TLS', status: false, note: 'Configure in production via reverse proxy' },
-                    { label: 'Email Verification', status: false, note: 'SMTP not yet configured' },
+                    { label: 'HTTPS / TLS', status: true, note: 'Enabled via Vercel (frontend) & Render (backend) TLS' },
+                    { label: 'Email Verification', status: true, note: 'SMTP configured via Gmail — OTP emails active' },
                   ].map(item => (
                     <div key={item.label} className="flex items-center justify-between p-4 bg-gray-950 rounded-xl border border-gray-800/50">
                       <div>
@@ -353,8 +353,7 @@ export default function SettingsPage() {
                 <div>
                   <p className="font-medium text-blue-300">Production Security Checklist</p>
                   <p className="text-sm text-gray-400 mt-1">
-                    For production: configure HTTPS via Nginx/Caddy, set up SMTP for email verification,
-                    rotate your JWT secrets, and enable database SSL.
+                    ✅ HTTPS active on all endpoints. ✅ SMTP email delivery configured. Rotate your JWT secrets periodically and ensure database SSL is enabled in Supabase settings.
                   </p>
                 </div>
               </div>
