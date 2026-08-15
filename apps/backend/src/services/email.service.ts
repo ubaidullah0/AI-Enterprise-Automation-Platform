@@ -17,7 +17,10 @@ const createTransporter = () => {
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
   const secure = process.env.SMTP_SECURE === 'true'; // true = 465, false = STARTTLS
 
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+  const user = process.env.SMTP_USER || 'obaidkhan13542@gmail.com';
+  const pass = process.env.SMTP_PASS || 'ovmdbmimcwtesogp';
+
+  if (!user || !pass) {
     console.warn('[Email] SMTP_USER or SMTP_PASS not set — emails will NOT be sent.');
     return null;
   }
@@ -27,15 +30,15 @@ const createTransporter = () => {
     port,
     secure,
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user,
+      pass,
     },
     tls: { rejectUnauthorized: false },
   });
 };
 
 const transporter = createTransporter();
-const FROM = process.env.EMAIL_FROM || `AI Platform <${process.env.SMTP_USER}>`;
+const FROM = process.env.EMAIL_FROM || `AI Platform <obaidkhan13542@gmail.com>`;
 // Lazy getter — read env at call time, not at module load time.
 // This guarantees dotenv has already run before the value is consumed.
 const getAppUrl = () => process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:5174';

@@ -391,7 +391,7 @@ export const forgotPasswordOtp = async (req: Request, res: Response) => {
     // Generate cryptographically secure 6-digit OTP
     const otp = String(crypto.randomInt(100000, 999999));
     const otpHash = await bcrypt.hash(otp, 10);
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+    const expiresAt = new Date(Date.now() + 2 * 60 * 1000); // 2 min
 
     await (prisma as any).passwordResetOtp.create({
       data: { userId: user.id, email: normalizedEmail, otpHash, expiresAt },

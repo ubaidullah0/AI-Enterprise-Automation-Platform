@@ -3,8 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../lib/api';
 
 const OTP_LENGTH = 6;
-const EXPIRY_SECONDS = 10 * 60; // 10 minutes
-const RESEND_COOLDOWN = 60;     // 1 minute cooldown
+const EXPIRY_SECONDS = 2 * 60; // 2 minutes
+const RESEND_COOLDOWN = 30;     // 30 seconds cooldown
 
 export default function OtpVerification() {
   const navigate = useNavigate();
