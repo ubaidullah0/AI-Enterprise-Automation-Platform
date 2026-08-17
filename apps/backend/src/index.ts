@@ -82,8 +82,49 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/audit-logs', auditRoutes);
 app.use('/api/v1/documents', documentRoutes);
 app.use('/api/v1/jobs', jobsRoutes);
+// ─── Root Welcome Page ────────────────────────────────────────────────────────
+app.get('/', (_req: Request, res: Response) => {
+  res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>AI Enterprise Automation Platform — API</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#07080f;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+    .card{background:linear-gradient(135deg,#0d0e1a,#13142a);border:1px solid rgba(99,102,241,.25);border-radius:20px;padding:48px 56px;max-width:540px;width:90%;box-shadow:0 0 60px rgba(99,102,241,.12);}
+    .icon{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:24px;}
+    h1{font-size:1.6rem;font-weight:700;color:#f1f5f9;margin-bottom:8px;}
+    .subtitle{color:#64748b;font-size:.95rem;margin-bottom:32px;}
+    .badge{display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.25);color:#34d399;font-size:.78rem;font-weight:600;padding:4px 12px;border-radius:99px;margin-bottom:28px;}
+    .dot{width:7px;height:7px;border-radius:50%;background:#34d399;animation:pulse 1.5s infinite;}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    .links{display:flex;flex-direction:column;gap:10px;}
+    a{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.15);border-radius:12px;color:#a5b4fc;text-decoration:none;font-size:.88rem;font-weight:500;transition:all .2s;}
+    a:hover{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.35);color:#c7d2fe;}
+    .arrow{font-size:1rem;opacity:.6;}
+    .footer{margin-top:28px;font-size:.78rem;color:#334155;text-align:center;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">⚡</div>
+    <h1>AI Enterprise Automation</h1>
+    <p class="subtitle">Backend API Server — Version 1.0.0</p>
+    <div class="badge"><span class="dot"></span> All Systems Operational</div>
+    <div class="links">
+      <a href="/api/v1/health">🩺 Health Check <span class="arrow">→</span></a>
+      <a href="/api-docs">📚 API Documentation (Swagger) <span class="arrow">→</span></a>
+      <a href="https://ai-enterprise-automation-platform-f.vercel.app" target="_blank">🌐 Open Frontend App <span class="arrow">→</span></a>
+    </div>
+    <p class="footer">© 2026 AI Platform · Backend powered by Express + Prisma + PostgreSQL</p>
+  </div>
+</body>
+</html>`);
+});
 
-// ─── Health Check ─────────────────────────────────────────────────────────────
+
 app.get('/api/v1/health', async (req: Request, res: Response) => {
   try {
     await prisma.$queryRawUnsafe('SELECT 1');
