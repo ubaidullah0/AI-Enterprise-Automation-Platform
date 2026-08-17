@@ -1,450 +1,299 @@
-# Windows Setup Guide — AI Enterprise Automation Platform
+﻿# Windows Setup Guide — AI Enterprise Automation Platform
 
-> Complete step-by-step guide for setting up the platform on Windows from scratch.
-
----
-
-## 1. Requirements
-
-Before starting, ensure you have or will install:
-
-| Tool | Minimum Version | Purpose |
-|---|---|---|
-| Windows | 10 / 11 | Operating System |
-| Node.js | 20.x LTS | Backend and frontend runtime |
-| npm | 10.x | Package manager (bundled with Node.js) |
-| Docker Desktop | 4.x | Runs PostgreSQL, Redis, MinIO, n8n |
-| Git | 2.x | Source control |
-| VS Code | latest | Recommended editor |
-| Ollama | latest | Local LLM (optional) |
+> Step-by-step guide to set up the project locally on Windows 10/11.
 
 ---
 
-## 2. Install Node.js
+## Prerequisites
 
-**Option A — via winget (recommended):**
+Before starting, ensure you have these installed:
+
+| Tool | Version | Download |
+|------|---------|---------|
+| Node.js | 20.x or later | https://nodejs.org |
+| npm | 10.x or later (comes with Node.js) | — |
+| Git | Latest | https://git-scm.com |
+| Docker Desktop | Latest | https://www.docker.com/products/docker-desktop |
+| VS Code | Latest (recommended) | https://code.visualstudio.com |
+
+**Verify installations in PowerShell:**
 ```powershell
-winget install OpenJS.NodeJS.LTS
-```
-
-**Option B — manual download:**
-Download from https://nodejs.org — choose the **LTS** installer.
-
-Verify installation:
-```powershell
-node --version   # should print v20.x.x or higher
-npm --version    # should print 10.x.x or higher
-```
-
----
-
-## 3. Install Git
-
-```powershell
-winget install Git.Git
-```
-
-Or download from https://git-scm.com/download/win
-
-Verify:
-```powershell
+node --version   # Should be v20.x.x
+npm --version    # Should be 10.x.x
 git --version
-```
-
----
-
-## 4. Install Docker Desktop
-
-Download from: https://www.docker.com/products/docker-desktop
-
-Run the installer and follow the prompts. Ensure **WSL 2** is enabled (the installer will prompt you).
-
-After installation, **start Docker Desktop** from the Start menu and wait until the whale icon in the taskbar shows "Docker Desktop is running".
-
----
-
-## 5. Verify Docker
-
-```powershell
 docker --version
-docker compose version
-docker ps
-```
-
-If `docker ps` returns without error, Docker is running correctly.
-
----
-
-## 6. Clone the Repository
-
-```powershell
-# Navigate to where you want the project
-cd C:\Projects
-
-# Clone
-git clone <repository-url> AI-Enterprise-Automatiom-Platform
-cd AI-Enterprise-Automatiom-Platform
 ```
 
 ---
 
-## 7. Install Dependencies
+## Step 1: Clone the Repository
 
+Open PowerShell and run:
 ```powershell
-# From the project root
+git clone https://github.com/ubaidullah0/AI-Enterprise-Automation-Platform.git
+cd AI-Enterprise-Automation-Platform
+```
+
+---
+
+## Step 2: Install Dependencies
+
+From the project root (where `package.json` lives):
+```powershell
 npm install
 ```
 
-This installs dependencies for all workspaces (frontend, backend, shared).
+This installs all workspace packages for `apps/backend`, `apps/frontend`, and `packages/shared`.
 
 ---
 
-## 8. Create Environment File
+## Step 3: Start Docker Services
+
+**Important:** Make sure Docker Desktop is running before this step.
 
 ```powershell
-# Copy the example file
-Copy-Item .env.example .env
+cd docker
+docker compose up -d
 ```
 
-Now open `.env` in VS Code and fill in your values:
+This starts 6 services:
+| Service | Port | Description |
+|---------|------|-------------|
+| PostgreSQL | 5433 | Main database |
+| pgAdmin | 5050 | Database admin UI |
+| Redis | 6379 | Cache |
+| n8n | 5680 | Workflow automation |
+| MinIO | 9000/9001 | Object storage |
+| Nginx | 8080 | Reverse proxy |
+
+Verify all services are running:
+```powershell
+docker compose ps
+```
+
+Go back to the project root:
+```powershell
+cd ..
+```
+
+---
+
+## Step 4: Configure Environment Variables
 
 ```powershell
-code .env
+# Copy the backend env template
+Copy-Item apps/backend/.env.example apps/backend/.env
 ```
 
-**Required fields to fill in:**
+Now open `apps/backend/.env` in VS Code and fill in all values:
+```powershell
+code apps/backend/.env
+```
 
+**Minimum required values to change:**
 ```env
-# Database (leave defaults for local dev)
-POSTGRES_USER=admin
-POSTGRES_PASSWORD=password123
-POSTGRES_DB=automation_platform
-DATABASE_URL=postgresql://admin:password123@localhost:5433/automation_platform?schema=public
+# Database — use port 5433 (Docker maps to internal 5432)
+DATABASE_URL=postgresql://your_postgres_user:your_postgres_password@127.0.0.1:5433/your_database_name?schema=public
 
-# JWT Secrets — CHANGE THESE
-JWT_SECRET=replace_with_long_random_string_minimum_32_chars
-JWT_REFRESH_SECRET=replace_with_different_long_random_string
-REFRESH_TOKEN_SECRET=replace_with_different_long_random_string
-ENCRYPTION_KEY=replace_with_32_char_hex_string_for_aes
+# Security — generate these with: node -e "require('crypto').randomBytes(64).toString('hex') |& Write-Host"
+JWT_SECRET=YOUR_GENERATED_64_CHAR_HEX_STRING
+JWT_REFRESH_SECRET=YOUR_GENERATED_64_CHAR_HEX_STRING
+ENCRYPTION_KEY=YOUR_GENERATED_64_CHAR_HEX_STRING
 
-# AI Providers (add what you have)
-OPENAI_API_KEY=sk-your_openai_key_here
-GEMINI_API_KEY=your_gemini_key_here
-OLLAMA_BASE_URL=http://localhost:11434
+# AI Providers (at least one required for AI features)
+OPENAI_API_KEY=sk-your-key
+GEMINI_API_KEY=your-gemini-key
 
-# MinIO (leave defaults for local dev)
-MINIO_ROOT_USER=admin
-MINIO_ROOT_PASSWORD=password123
-MINIO_ENDPOINT=localhost
-MINIO_ACCESS_KEY=admin
-MINIO_SECRET_KEY=password123
-MINIO_BUCKET=documents
-
-# n8n (fill in after first-time n8n setup below)
+# n8n
 N8N_URL=http://localhost:5680
-N8N_API_KEY=
+N8N_API_KEY=your-n8n-api-key
 
-# Email (Gmail SMTP — see AI Provider Setup section)
+# MinIO
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_ROOT_USER=your_minio_user
+MINIO_ROOT_PASSWORD=your_minio_password
+MINIO_BUCKET_NAME=automation-platform-docs
+
+# Email (optional — without it, email features are skipped gracefully)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your_gmail@gmail.com
 SMTP_PASS=your_16_char_app_password
 
-# Frontend
+# Frontend URL
 FRONTEND_URL=http://localhost:5174
-CORS_ORIGINS=http://localhost:5174
 ```
 
-> ⚠️ **SECURITY WARNING:** Never share your `.env` file or commit it to git. The `.gitignore` already excludes it.
-
----
-
-## 9. Start Docker Services
-
+**Generate secure random secrets in PowerShell:**
 ```powershell
-# Navigate to the docker directory
-cd docker
-
-# Start all services in the background
-docker compose up -d
-
-# Verify all containers started
-docker ps
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 ```
 
-You should see containers running for:
-- `automation-postgres` (PostgreSQL)
-- `automation-redis` (Redis)
-- `automation-minio` (MinIO)
-- `automation-n8n` (n8n)
-- `automation-pgadmin` (pgAdmin)
-- `automation-nginx` (Nginx)
-
-If any container failed to start:
+**Configure frontend env:**
 ```powershell
-docker compose logs <service-name>
-# e.g.: docker compose logs postgres
+Copy-Item apps/frontend/.env.example apps/frontend/.env
+code apps/frontend/.env
+```
+```env
+VITE_API_URL=http://localhost:4000/api/v1
 ```
 
 ---
 
-## 10. Set Up the Database (Prisma)
+## Step 5: Initialize the Database
 
 ```powershell
-cd ..\apps\backend
+cd apps/backend
 
-# Generate the Prisma client
+# Generate Prisma client code
 npx prisma generate
 
-# Run database migrations
+# Run migrations (creates all tables)
 npx prisma migrate dev --name init
 
-# Validate the schema
-npx prisma validate
+# Go back to project root
+cd ../..
 ```
 
-> ⚠️ **DO NOT run `npx prisma migrate reset`** — this deletes all data in the database.
-
----
-
-## 11. n8n First-Time Setup
-
-1. Open http://localhost:5680 in your browser
-2. Create an admin account (set username and password)
-3. Go to **Settings** (bottom-left gear icon) → **n8n API**
-4. Click **Create an API key**
-5. Copy the full API key
-6. Open your `.env` file and set:
-   ```env
-   N8N_API_KEY=eyJhbGc...your_full_key_here
-   ```
-7. The backend will pick this up automatically (tsx watch will restart the backend)
-
----
-
-## 12. MinIO First-Time Setup
-
-1. Open http://localhost:9001 in your browser
-2. Login with your `MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD` from `.env`
-3. Click **Buckets** → **Create Bucket**
-4. Name it `documents` (must match `MINIO_BUCKET` in `.env`)
-5. Click **Create Bucket**
-
-The platform will now be able to upload and retrieve files.
-
----
-
-## 13. Ollama Setup (Optional — Local LLM)
-
-```powershell
-# Install Ollama
-winget install Ollama.Ollama
-
-# After installation, pull a model
-ollama pull llama3
-
-# Verify Ollama is running
-ollama list
-```
-
-Ensure your `.env` has:
+**If you see errors about DIRECT_URL:**
+Add this line to `apps/backend/.env`:
 ```env
-OLLAMA_BASE_URL=http://localhost:11434
+DIRECT_URL=postgresql://your_postgres_user:your_postgres_password@127.0.0.1:5433/your_database_name?schema=public
 ```
-
-Ollama runs automatically on Windows after installation.
+(Same as DATABASE_URL for local development)
 
 ---
 
-## 14. Start the Backend
+## Step 6: Run the Backend
 
-Open a **new PowerShell terminal**:
-
+Open a **new PowerShell window** and run:
 ```powershell
-cd apps\backend
-npm run dev
+cd C:\path\to\AI-Enterprise-Automatiom-Platform
+npm run dev --workspace=apps/backend
 ```
 
 You should see:
 ```
 Backend server is running on http://localhost:4000
 Swagger docs available at http://localhost:4000/api-docs
-[PostgresQueue] Started polling for background jobs.
 ```
+
+Verify: Open http://localhost:4000 in your browser. You should see the API welcome page.
 
 ---
 
-## 15. Start the Frontend
+## Step 7: Run the Frontend
 
-Open **another new PowerShell terminal**:
-
+Open another **new PowerShell window** and run:
 ```powershell
-cd apps\frontend
-npm run dev
+cd C:\path\to\AI-Enterprise-Automatiom-Platform
+npm run dev --workspace=apps/frontend
 ```
 
 You should see:
 ```
+  VITE v5.x.x  ready in X ms
   ➜  Local:   http://localhost:5174/
 ```
 
+Open http://localhost:5174 in your browser.
+
 ---
 
-## 16. Access the Platform
+## Step 8: Register Your First Account
 
-Open your browser and navigate to:
+1. Click **"Create account"** on the login page
+2. Enter your email, password (min 8 chars), first name
+3. A workspace organization is automatically created for you
+4. You are logged in as **OWNER** of your workspace
+
+---
+
+## Service URLs Reference
 
 | Service | URL |
-|---|---|
-| **Application** | http://localhost:5174 |
-| **API** | http://localhost:4000 |
-| **Swagger Docs** | http://localhost:4000/api-docs |
-| **pgAdmin** | http://localhost:5050 |
-| **MinIO Console** | http://localhost:9001 |
-| **n8n** | http://localhost:5680 |
+|---------|-----|
+| Frontend App | http://localhost:5174 |
+| Backend API | http://localhost:4000 |
+| API Swagger Docs | http://localhost:4000/api-docs |
+| Health Check | http://localhost:4000/api/v1/health |
+| pgAdmin (DB Admin) | http://localhost:5050 |
+| n8n Automation | http://localhost:5680 |
+| MinIO Console | http://localhost:9001 |
 
 ---
 
-## 17. Gmail SMTP Setup (Optional — Email Features)
+## Common Issues & Fixes
 
-To enable OTP password reset emails and welcome emails:
+### Cannot connect to PostgreSQL
+- Check Docker is running: `docker ps`
+- Verify port 5433 is not in use: `netstat -aon | findstr :5433`
+- Check DATABASE_URL uses port `5433` (not 5432)
 
-1. Log in to your Gmail account
-2. Go to **Google Account** → **Security** → **2-Step Verification** (enable if not already)
-3. Go to **Security** → **App passwords**
-4. Generate an App Password for "Mail" + "Windows Computer"
-5. Copy the 16-character password
-6. Set in `.env`:
-   ```env
-   SMTP_USER=your_gmail@gmail.com
-   SMTP_PASS=abcd efgh ijkl mnop
-   EMAIL_FROM=AI Platform <your_gmail@gmail.com>
-   ```
-
----
-
-## 18. Common Errors
-
-### Port already in use
-```powershell
-# Find what's using port 4000
-netstat -aon | findstr :4000
-
-# Kill the process (replace <PID> with the process ID)
-taskkill /F /PID <PID>
+### Prisma migration fails with DIRECT_URL error
+Add to `apps/backend/.env`:
+```env
+DIRECT_URL=postgresql://USER:PASS@127.0.0.1:5433/DBNAME?schema=public
 ```
 
-Common port conflicts:
-- `:4000` — Backend API
-- `:5174` — Frontend
-- `:5433` — PostgreSQL
-- `:5680` — n8n
-- `:9000` / `:9001` — MinIO
-- `:6379` — Redis
-
-### Docker not starting
-- Open Docker Desktop and wait for the engine to fully start
-- Check that WSL 2 is enabled in Docker Desktop Settings → General
-- Restart Docker Desktop
-
-### PostgreSQL connection refused
-- Ensure the container is running: `docker ps | findstr postgres`
-- Check the port: the container uses **5433** (not the default 5432)
-- Verify `DATABASE_URL` in `.env` includes `@localhost:5433`
-
-### Prisma migration failed
+### Port 5174 already in use
 ```powershell
-# Check if postgres is healthy
-docker ps
-# Look for (healthy) next to automation-postgres
-
-# Try again after postgres is healthy
-cd apps\backend
-npx prisma migrate dev --name init
+netstat -aon | findstr :5174
+taskkill /PID [the-pid-number] /F
 ```
 
-### n8n API key missing or invalid
-- Navigate to http://localhost:5680/settings/api
-- Generate a new key
-- Update `N8N_API_KEY` in `.env`
-- The backend auto-reloads (tsx watch)
+### n8n API key not working
+1. Open http://localhost:5680
+2. Go to Settings → API
+3. Create a new API key
+4. Copy it into `N8N_API_KEY` in your `.env`
 
-### Ollama not available
-- Ensure Ollama is installed: `ollama --version`
-- Ensure a model is pulled: `ollama list`
-- Verify the service is running at http://localhost:11434
+### AI chat returns empty or error
+Ensure your `OPENAI_API_KEY` or `GEMINI_API_KEY` is valid and has credits.
 
-### Emails bounce or go to spam
-- Ensure you're using a Gmail App Password (not your regular password)
-- For automated testing only, set `TEST_MODE=true` in `.env` to skip sending to `@example.com` and `@test.com` addresses
-- **Never leave `TEST_MODE=true` in production**
+### Docker Compose up fails
+```powershell
+docker compose down -v   # Remove all containers + volumes
+docker compose up -d     # Start fresh
+```
 
 ---
 
-## 19. How to Stop All Services
+## Development Workflow
 
 ```powershell
+# Terminal 1: Backend
+npm run dev --workspace=apps/backend
+
+# Terminal 2: Frontend
+npm run dev --workspace=apps/frontend
+
+# Terminal 3: Docker monitoring (optional)
+docker stats
+```
+
+---
+
+## Stopping the Project
+
+```powershell
+# Stop dev servers: Press Ctrl+C in each terminal
+
 # Stop Docker services
 cd docker
 docker compose down
-
-# Stop the backend and frontend
-# Press Ctrl+C in each terminal window
 ```
 
 ---
 
-## 20. How to Restart Services
+## Building for Production
 
 ```powershell
-# Restart Docker services
-cd docker
-docker compose restart
+# Build backend
+npm run build --workspace=apps/backend
 
-# Or restart a specific service
-docker compose restart postgres
-docker compose restart n8n
+# Build frontend
+npm run build --workspace=apps/frontend
+# Output: apps/frontend/dist/
 ```
-
----
-
-## 21. ⚠️ DANGER — What NOT To Do
-
-| ❌ Action | Why It's Dangerous |
-|---|---|
-| `docker compose down -v` | **Deletes all Docker volumes** — permanently destroys your database and MinIO data |
-| `npx prisma migrate reset` | **Drops and recreates the database** — all data is lost |
-| Deleting volumes in Docker Desktop | Same as above — permanent data loss |
-| `DROP DATABASE` in pgAdmin | Destroys the entire database |
-| Sharing your `.env` file | Exposes all your credentials |
-
----
-
-## 22. Development vs Production Configuration
-
-| Setting | Development | Production |
-|---|---|---|
-| `NODE_ENV` | `development` | `production` |
-| `JWT_SECRET` | Any string | Long, random, 64+ chars |
-| `HTTPS` | Not required | **Required** |
-| `CORS_ORIGINS` | `http://localhost:5174` | Your actual domain |
-| `TEST_MODE` | `true` for testing | `false` |
-| `SMTP` | Gmail App Password | Transactional email service |
-| PostgreSQL | Docker local | Managed service or SSL-enabled |
-| MinIO | Docker local | MinIO cluster or AWS S3 |
-| `DATABASE_URL` | Port 5433 | Standard port 5432 or managed |
-
----
-
-## 23. Backup Your Data
-
-```powershell
-# Backup PostgreSQL (run from host, not inside container)
-docker exec automation-postgres pg_dump -U admin automation_platform > backup_$(Get-Date -Format 'yyyyMMdd').sql
-
-# Restore from backup
-Get-Content backup_20260815.sql | docker exec -i automation-postgres psql -U admin automation_platform
-```
-
-For MinIO: use the MinIO Console → **Buckets** → **Download** to export objects, or set up MinIO replication.
