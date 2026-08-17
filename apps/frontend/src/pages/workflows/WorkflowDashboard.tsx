@@ -135,14 +135,16 @@ export default function WorkflowDashboard() {
   };
 
   const openInN8n = (wf: any) => {
-    const n8nUrl = import.meta.env.VITE_N8N_URL || '';
-    // If we have a real synced n8n workflow ID and n8n URL, open it there
-    if (wf.n8nWorkflowId && n8nUrl) {
-      window.open(`${n8nUrl}/workflow/${wf.n8nWorkflowId}`, '_blank');
-      return;
+    // Use env var if set, otherwise default to port 5680 (from project config)
+    const n8nBase = import.meta.env.VITE_N8N_URL || 'http://localhost:5680';
+    
+    if (wf.n8nWorkflowId) {
+      // Open the specific workflow directly in n8n
+      window.open(`${n8nBase}/workflow/${wf.n8nWorkflowId}`, '_blank');
+    } else {
+      // Workflow wasn't synced — open n8n's workflow list so user can create there
+      window.open(`${n8nBase}/workflows`, '_blank');
     }
-    // Otherwise open the native editor — workflow was saved locally
-    navigate(`/workflows/${wf.id}/edit`);
   };
 
   const filteredWorkflows = workflows
