@@ -116,38 +116,38 @@ export default function TeamManagement() {
   }
 
   return (
-    <div className="p-8 space-y-8 max-w-5xl mx-auto">
+    <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto">
       <div>
-        <h2 className="text-3xl font-bold mb-1">Team Management</h2>
-        <p className="text-gray-400">
+        <h2 className="text-2xl sm:text-3xl font-bold mb-1">Team Management</h2>
+        <p className="text-gray-400 text-xs sm:text-sm">
           Managing <span className="text-white font-medium">{organization.name}</span> — {organization.members.length} member{organization.members.length !== 1 ? 's' : ''}
         </p>
       </div>
 
       {/* Invite Form */}
-      <div className="bg-gray-900 border border-gray-800 p-6 rounded-xl">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <UserPlus size={20} className="text-blue-400" />
+      <div className="bg-gray-900 border border-gray-800 p-4 sm:p-6 rounded-xl">
+        <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
+          <UserPlus size={18} className="text-blue-400" />
           Invite Member
         </h3>
-        <form onSubmit={handleInvite} className="flex gap-4 items-end flex-wrap">
-          <div className="flex-1 min-w-48">
-            <label className="block text-sm font-medium mb-1.5 text-gray-300">Email Address</label>
+        <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-end">
+          <div className="flex-1 min-w-0 sm:min-w-48">
+            <label className="block text-xs sm:text-sm font-medium mb-1.5 text-gray-300">Email Address</label>
             <input
               type="email"
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               required
-              className="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               placeholder="colleague@company.com"
             />
           </div>
-          <div className="w-44">
-            <label className="block text-sm font-medium mb-1.5 text-gray-300">Role</label>
+          <div className="w-full sm:w-44">
+            <label className="block text-xs sm:text-sm font-medium mb-1.5 text-gray-300">Role</label>
             <select
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value)}
-              className="w-full bg-gray-950 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
             >
               <option value="MEMBER">Member</option>
               <option value="MANAGER">Manager</option>
@@ -157,7 +157,7 @@ export default function TeamManagement() {
           <button
             type="submit"
             disabled={inviting}
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold px-6 py-2.5 rounded-lg transition-colors"
+            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold px-5 sm:px-6 py-2 sm:py-2.5 rounded-lg transition-colors text-xs sm:text-sm"
           >
             {inviting ? 'Sending...' : 'Send Invite'}
           </button>

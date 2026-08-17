@@ -76,3 +76,9 @@ api.interceptors.response.use(
 
 export { api };
 export default api;
+
+/**
+ * Returns the full base URL for native fetch() calls (e.g. SSE streams).
+ * Uses the same logic as the axios instance so they always point to the same backend.
+ */
+export const getApiBaseUrl = (): string => baseURL;

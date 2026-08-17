@@ -4,11 +4,11 @@ class N8nService {
   constructor() {
     this.baseURL = process.env.N8N_URL
       ? `${process.env.N8N_URL}/api/v1`
-      : 'http://localhost:5678/api/v1';
+      : 'http://localhost:5680/api/v1';
   }
 
   private async request(method: string, path: string, body?: any) {
-    const apiKey = process.env.N8N_API_KEY || '';
+    const apiKey = process.env.N8N_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjZDQxMTRhYS1iZWY2LTQ2YjEtOTZlNC1mNGI0NWJjMjZlY2EiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiNWRlNWI4MjUtYzZkZC00ZmQ4LTg3ZmMtZWE0M2VhM2MzMmQ4IiwiaWF0IjoxNzg2NzkyNzM4fQ.lWxalIURpiwxYo34rycEyvEk4TF9Sa0w9XbM6rSJx2k';
     const res = await fetch(`${this.baseURL}${path}`, {
       method,
       headers: {

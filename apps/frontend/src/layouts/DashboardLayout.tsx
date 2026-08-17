@@ -12,7 +12,7 @@ import NotificationBell from '../components/NotificationBell';
 export default function DashboardLayout() {
   const { isAuthenticated, user, setAuth, logout, accessToken } = useAuthStore();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
   const [showCreateOrg, setShowCreateOrg] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
@@ -125,6 +125,15 @@ export default function DashboardLayout() {
               AI Platform
             </span>
           </div>
+          {/* Mobile close button */}
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-1.5 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white transition-colors ml-auto"
+            title="Close sidebar"
+          >
+            <X size={17} />
+          </button>
+          {/* Desktop toggle button */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="hidden lg:flex p-1.5 hover:bg-gray-800 rounded-lg text-gray-500 hover:text-gray-300 transition-colors shrink-0 ml-auto"
@@ -349,7 +358,7 @@ export default function DashboardLayout() {
         <div className="flex-1 overflow-auto bg-gray-950">
           {/* Banner when no org is selected */}
           {!user?.activeOrganizationId && (
-            <div className="mx-6 mt-5 bg-amber-500/8 border border-amber-500/25 rounded-xl px-5 py-4 flex items-center gap-3">
+            <div className="mx-3 sm:mx-6 mt-3 sm:mt-5 bg-amber-500/8 border border-amber-500/25 rounded-xl px-4 sm:px-5 py-3 sm:py-4 flex items-center gap-3">
               <Building2 size={18} className="text-amber-400 shrink-0" />
               <div>
                 <p className="text-amber-300 font-semibold text-sm">No organization selected</p>
@@ -357,7 +366,7 @@ export default function DashboardLayout() {
               </div>
             </div>
           )}
-          <div className="p-6 sm:p-8">
+          <div className="p-3 sm:p-6 lg:p-8">
             <Outlet />
           </div>
         </div>

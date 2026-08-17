@@ -3,9 +3,8 @@ import { useAuthStore } from '../../store/authStore';
 import api from '../../lib/api';
 import {
   Play, Pause, Trash2, ExternalLink, Plus, Activity,
-  Search, Zap, CheckCircle2, Edit3, Sparkles
+  Search, Zap, CheckCircle2, Sparkles
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import AiWorkflowWizard from './components/AiWorkflowWizard';
 
 interface Workflow {
@@ -76,7 +75,6 @@ export default function WorkflowDashboard() {
   const [newWorkflowName, setNewWorkflowName] = useState('');
   const [newWorkflowEngine, setNewWorkflowEngine] = useState('native');
   const [searchQuery, setSearchQuery] = useState('');
-  const navigate = useNavigate();
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
 
   const fetchWorkflows = async () => {
@@ -173,59 +171,59 @@ export default function WorkflowDashboard() {
   }
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-6 sm:space-y-8 max-w-7xl mx-auto">
 
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold mb-1">Automations</h2>
-          <p className="text-gray-400">Manage your organization's automation workflows.</p>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-1">Automations</h2>
+          <p className="text-gray-400 text-xs sm:text-sm">Manage your organization's automation workflows.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={() => setShowTemplates(true)}
-            className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2"
+            className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-semibold px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-colors flex items-center gap-2 text-xs sm:text-sm flex-1 sm:flex-initial justify-center"
           >
-            <Zap size={16} className="text-amber-400" />
+            <Zap size={15} className="text-amber-400" />
             Templates
           </button>
           <button
             onClick={() => setShowAiWizard(true)}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-xl transition-all shadow-lg flex items-center gap-2"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-all shadow-lg flex items-center gap-2 text-xs sm:text-sm flex-1 sm:flex-initial justify-center"
           >
-            <Sparkles size={16} />
+            <Sparkles size={15} />
             Generate with AI
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-semibold px-5 py-2.5 rounded-xl transition-all shadow-lg flex items-center gap-2"
+            className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-semibold px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-all shadow-lg flex items-center gap-2 text-xs sm:text-sm w-full sm:w-auto justify-center"
           >
-            <Plus size={18} />
+            <Plus size={16} />
             New Workflow
           </button>
         </div>
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <div key={stat.label} className="bg-gray-900/60 border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition-colors">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-gray-400">{stat.label}</span>
-                <div className={`w-9 h-9 rounded-lg ${stat.bg} flex items-center justify-center`}>
-                  <Icon size={18} className={stat.color} />
+            <div key={stat.label} className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 sm:p-5 hover:border-gray-700 transition-colors">
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <span className="text-xs sm:text-sm text-gray-400">{stat.label}</span>
+                <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg ${stat.bg} flex items-center justify-center`}>
+                  <Icon size={16} className={stat.color} />
                 </div>
               </div>
-              <p className="text-3xl font-bold text-white">{stat.value}</p>
+              <span className="text-2xl sm:text-3xl font-bold">{stat.value}</span>
             </div>
           );
         })}
       </div>
 
-      {/* Search + Filter Bar */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      {/* Filters and Search */}
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
         <div className="relative flex-1">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
@@ -233,15 +231,15 @@ export default function WorkflowDashboard() {
             placeholder="Search workflows..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        <div className="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl p-1.5">
+        <div className="flex items-center gap-1 sm:gap-2 bg-gray-900 border border-gray-800 rounded-xl p-1 sm:p-1.5 self-start sm:self-auto">
           {(['all', 'active', 'inactive'] as const).map(status => (
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${
+              className={`px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium capitalize transition-colors ${
                 filterStatus === status
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-400 hover:text-white'
@@ -255,16 +253,16 @@ export default function WorkflowDashboard() {
 
       {/* Workflow List */}
       {filteredWorkflows.length === 0 ? (
-        <div className="bg-gray-900/40 border border-gray-800 border-dashed rounded-2xl p-16 text-center">
-          <Zap size={48} className="mx-auto text-gray-700 mb-4" />
-          <h3 className="text-xl font-semibold mb-2">
+        <div className="bg-gray-900/40 border border-gray-800 border-dashed rounded-2xl p-8 sm:p-16 text-center">
+          <Zap size={40} className="mx-auto text-gray-700 mb-4 sm:w-12 sm:h-12" />
+          <h3 className="text-lg sm:text-xl font-semibold mb-2">
             {searchQuery ? 'No workflows match your search' : 'No workflows yet'}
           </h3>
-          <p className="text-gray-400 mb-6">
+          <p className="text-gray-400 mb-6 text-xs sm:text-sm">
             {searchQuery ? 'Try a different search term.' : 'Create your first automation to get started.'}
           </p>
           {!searchQuery && (
-            <button onClick={() => setShowTemplates(true)} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-xl font-medium transition-colors">
+            <button onClick={() => setShowTemplates(true)} className="bg-blue-600 hover:bg-blue-500 text-white px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-sm font-medium transition-colors">
               Browse Templates
             </button>
           )}
@@ -272,22 +270,22 @@ export default function WorkflowDashboard() {
       ) : (
         <div className="space-y-3">
           {filteredWorkflows.map(wf => (
-            <div key={wf.id} className="group bg-gray-900/60 border border-gray-800 hover:border-gray-600 rounded-xl p-5 flex items-center justify-between transition-all">
-              <div className="flex items-center gap-4">
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+            <div key={wf.id} className="group bg-gray-900/60 border border-gray-800 hover:border-gray-600 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 ${
                   wf.isActive
                     ? 'bg-emerald-500/10 border border-emerald-500/20'
                     : 'bg-gray-800 border border-gray-700'
                 }`}>
                   {wf.isActive
-                    ? <Play size={18} className="text-emerald-400" />
-                    : <Pause size={18} className="text-gray-500" />
+                    ? <Play size={17} className="text-emerald-400" />
+                    : <Pause size={17} className="text-gray-500" />
                   }
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold text-white text-base">{wf.name}</h4>
-                    <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-semibold text-white text-sm sm:text-base truncate">{wf.name}</h4>
+                    <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full border font-medium ${
                       wf.isActive
                         ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                         : 'bg-gray-700 text-gray-400 border-gray-600'
@@ -295,7 +293,7 @@ export default function WorkflowDashboard() {
                       {wf.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500 mt-0.5">
+                  <p className="text-xs sm:text-sm text-gray-500 mt-0.5 truncate">
                     Updated {new Date(wf.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     {wf.engine === 'native' ? (
                       <span className="ml-2 text-emerald-500/70">· Native</span>
@@ -306,25 +304,15 @@ export default function WorkflowDashboard() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
-                {wf.engine === 'native' ? (
-                  <button
-                    onClick={() => navigate(`/workflows/${wf.id}/edit`)}
-                    className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-sm px-3.5 py-2 rounded-lg transition-colors border border-gray-700 text-gray-300"
-                  >
-                    <Edit3 size={13} />
-                    Edit Workflow
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => openInN8n(wf)}
-                    className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-sm px-3.5 py-2 rounded-lg transition-colors border border-gray-700 text-gray-300"
-                  >
-                    {wf.n8nWorkflowId
-                      ? <><ExternalLink size={13} /> Open in n8n</>
-                      : <><Edit3 size={13} /> Edit Workflow</>}
-                  </button>
-                )}
+              <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                <button
+                  onClick={() => openInN8n(wf)}
+                  className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-sm px-3.5 py-2 rounded-lg transition-colors border border-gray-700 text-gray-300"
+                  title="Open and edit in n8n web interface"
+                >
+                  <ExternalLink size={13} />
+                  Edit in n8n
+                </button>
                 <button
                   onClick={() => handleDelete(wf.id)}
                   className="p-2 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../../store/authStore';
-import api from '../../lib/api';
+import api, { getApiBaseUrl } from '../../lib/api';
 import ReactMarkdown from 'react-markdown';
 import {
   Send, Bot, User, MessageSquare, Plus, Loader2, Trash2, Sparkles, ChevronDown, Menu
@@ -42,7 +42,8 @@ export default function AssistantDashboard() {
   const [loading, setLoading] = useState(false);
   const [providers, setProviders] = useState<AIProvider[]>([]);
   const [provider, setProvider] = useState('openai');
-  const [providerOpen, setProviderOpen] = useState(false);
+  const [providerDropdownOpen, setProviderDropdownOpen] = useState(false);
+  const [chatSidebarOpen, setChatSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -146,7 +147,9 @@ export default function AssistantDashboard() {
 
     try {
       const authToken = useAuthStore.getState().accessToken;
-      const response = await fetch('/api/v1/ai/chat/stream', {
+      // Use absolute backend URL (works in both local dev and production)
+      const streamUrl = `${getApiBaseUrl()}/ai/chat/stream`;
+      const response = await fetch(streamUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -217,14 +220,19 @@ export default function AssistantDashboard() {
         }
       }
     } catch (error: any) {
-      const isNetworkError = !error.response && (error.message?.includes('fetch') || error.message?.includes('network') || error.message?.includes('Failed'));
+      const isNetworkError = !error.response && (
+        error.message?.includes('fetch') ||
+        error.message?.includes('network') ||
+        error.message?.includes('Failed') ||
+        error.name === 'TypeError'
+      );
       const errMsg = isNetworkError
-        ? 'Cannot connect to the backend server. Make sure the backend is running on port 4000.'
-        : error.message || 'Unknown error';
+        ? 'Unable to reach the AI service. The backend may be starting up — please wait 30 seconds and try again.'
+        : error.message || 'Unknown error occurred';
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: 'assistant' as const,
-        content: `⚠️ **Error:** ${errMsg}\n\nPlease check your configuration or try again.`
+        content: `⚠️ **Error:** ${errMsg}`
       }]);
     } finally {
       setLoading(false);
@@ -240,21 +248,29 @@ export default function AssistantDashboard() {
   ];
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] border border-gray-800 rounded-xl overflow-hidden shadow-2xl relative" style={{ background: 'linear-gradient(135deg, #0a0a0f 0%, #0d1117 100%)' }}>
+    <div className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-7rem)] border border-gray-800 rounded-xl overflow-hidden shadow-2xl relative" style={{ background: 'linear-gradient(135deg, #0a0a0f 0%, #0d1117 100%)' }}>
 
-      {/* ── Sidebar ─────────────────────────────────────────────────────────── */}
-      <div className={`absolute z-10 md:relative w-72 h-full bg-gray-900/95 md:bg-gray-900/80 border-r border-gray-800 flex-col backdrop-blur-md transition-transform duration-300 ${providerOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} flex`}>
-        <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+      {/* ── Mobile Sidebar Overlay ────────────────────────────────────────── */}
+      {chatSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 md:hidden"
+          onClick={() => setChatSidebarOpen(false)}
+        />
+      )}
+
+      {/* ── Conversations Sidebar ─────────────────────────────────────────── */}
+      <div className={`fixed md:relative inset-y-0 left-0 z-30 md:z-auto w-72 h-full bg-gray-900/95 md:bg-gray-900/80 border-r border-gray-800 flex flex-col backdrop-blur-md transition-transform duration-300 ${chatSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <div className="p-4 border-b border-gray-800 flex items-center justify-between gap-2">
           <button
-            onClick={handleNewChat}
-            className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-semibold px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-500/10"
+            onClick={() => { handleNewChat(); setChatSidebarOpen(false); }}
+            className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-semibold px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-500/10 text-sm"
           >
-            <Plus size={18} />
+            <Plus size={16} />
             New Chat
           </button>
           <button 
-            className="md:hidden ml-2 p-2.5 rounded-xl bg-gray-800 text-gray-400"
-            onClick={() => setProviderOpen(false)}
+            className="md:hidden p-2 rounded-xl bg-gray-800 text-gray-400 hover:text-white transition-colors"
+            onClick={() => setChatSidebarOpen(false)}
           >
             <Menu size={18} />
           </button>
@@ -267,7 +283,7 @@ export default function AssistantDashboard() {
           {conversations.map(conv => (
             <button
               key={conv.id}
-              onClick={() => setActiveConversationId(conv.id)}
+              onClick={() => { setActiveConversationId(conv.id); setChatSidebarOpen(false); }}
               className={`w-full group text-left px-3 py-2.5 rounded-lg flex items-start gap-3 transition-all ${
                 activeConversationId === conv.id
                   ? 'bg-blue-600/10 border border-blue-500/20 text-blue-300'
@@ -293,77 +309,81 @@ export default function AssistantDashboard() {
       </div>
 
       {/* ── Main Chat Area ──────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col overflow-hidden relative">
+      <div className="flex-1 flex flex-col overflow-hidden relative min-w-0">
 
         {/* Header */}
-        <div className="h-14 border-b border-gray-800 bg-gray-900/40 backdrop-blur-md px-4 md:px-6 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="h-14 border-b border-gray-800 bg-gray-900/40 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button 
               className="md:hidden p-1.5 rounded-lg bg-gray-800/50 text-gray-400 hover:text-white"
-              onClick={() => setProviderOpen(true)}
+              onClick={() => setChatSidebarOpen(true)}
+              title="Open Chat History"
             >
               <Menu size={18} />
             </button>
             <Sparkles size={18} className="text-blue-400 hidden sm:block" />
-            <span className="font-semibold text-gray-200">AI Assistant</span>
+            <span className="font-semibold text-gray-200 text-sm sm:text-base">AI Assistant</span>
           </div>
 
           {/* Provider Selector */}
           <div className="relative">
             <button
-              onClick={() => setProviderOpen(!providerOpen)}
-              className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm px-3 py-1.5 rounded-lg transition-colors"
+              onClick={() => setProviderDropdownOpen(!providerDropdownOpen)}
+              className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors"
             >
               <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${activeProvider.color}`} />
-              <span className="text-gray-300">{activeProvider.name}</span>
+              <span className="text-gray-300 truncate max-w-[120px] sm:max-w-none">{activeProvider.name}</span>
               <ChevronDown size={14} className="text-gray-400" />
             </button>
-            {providerOpen && (
-              <div className="absolute top-full right-0 mt-2 w-52 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden">
-                <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-700">
-                  Select Provider
+            {providerDropdownOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setProviderDropdownOpen(false)} />
+                <div className="absolute top-full right-0 mt-2 w-52 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+                  <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-700">
+                    Select Provider
+                  </div>
+                  <div className="py-2">
+                    {providersLoading ? (
+                      <div className="px-4 py-2 text-sm text-gray-400">Loading...</div>
+                    ) : providers.length === 0 ? (
+                      <div className="px-4 py-2 text-sm text-gray-400">No providers configured in Settings.</div>
+                    ) : (
+                      providers.map(p => (
+                        <button
+                          key={p.id}
+                          onClick={() => { setProvider(p.id); setProviderDropdownOpen(false); }}
+                          className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-gray-700/50 transition-colors ${provider === p.id ? 'text-white bg-gray-700/30' : 'text-gray-300'}`}
+                        >
+                          <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${p.color}`} />
+                          {p.name}
+                          {provider === p.id && <span className="ml-auto text-xs text-blue-400">Active</span>}
+                        </button>
+                      ))
+                    )}
+                  </div>
                 </div>
-                <div className="py-2">
-                  {providersLoading ? (
-                    <div className="px-4 py-2 text-sm text-gray-400">Loading...</div>
-                  ) : providers.length === 0 ? (
-                    <div className="px-4 py-2 text-sm text-gray-400">No providers configured in Settings.</div>
-                  ) : (
-                    providers.map(p => (
-                      <button
-                        key={p.id}
-                        onClick={() => { setProvider(p.id); setProviderOpen(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-gray-700/50 transition-colors ${provider === p.id ? 'text-white bg-gray-700/30' : 'text-gray-300'}`}
-                      >
-                        <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${p.color}`} />
-                        {p.name}
-                        {provider === p.id && <span className="ml-auto text-xs text-blue-400">Active</span>}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
+              </>
             )}
           </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+        <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
           {messages.length === 0 && !loading ? (
-            <div className="h-full flex flex-col items-center justify-center text-center">
-              <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${activeProvider.color} flex items-center justify-center mb-6 shadow-2xl`}>
-                <Bot size={36} className="text-white" />
+            <div className="h-full flex flex-col items-center justify-center text-center px-2 py-6">
+              <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br ${activeProvider.color} flex items-center justify-center mb-4 sm:mb-6 shadow-2xl`}>
+                <Bot size={30} className="text-white sm:w-9 sm:h-9" />
               </div>
-              <h2 className="text-2xl font-bold mb-2 text-white">How can I help you?</h2>
-              <p className="text-gray-400 max-w-md mb-8">
+              <h2 className="text-xl sm:text-2xl font-bold mb-2 text-white">How can I help you?</h2>
+              <p className="text-gray-400 max-w-md mb-6 text-xs sm:text-sm">
                 I'm your enterprise AI assistant powered by <strong className="text-gray-200">{activeProvider.name}</strong>. Ask me anything.
               </p>
-              <div className="grid grid-cols-2 gap-3 max-w-xl w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-xl w-full">
                 {SUGGESTED_PROMPTS.map((prompt, i) => (
                   <button
                     key={i}
                     onClick={() => setInput(prompt)}
-                    className="text-left bg-gray-900/60 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 rounded-xl p-4 text-sm text-gray-400 hover:text-gray-200 transition-all"
+                    className="text-left bg-gray-900/60 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-gray-400 hover:text-gray-200 transition-all"
                   >
                     {prompt}
                   </button>
@@ -427,8 +447,8 @@ export default function AssistantDashboard() {
         </div>
 
         {/* Input */}
-        <div className="shrink-0 px-6 py-4 border-t border-gray-800 bg-gray-900/40 backdrop-blur-md">
-          <form onSubmit={handleSend} className="flex items-end gap-3">
+        <div className="shrink-0 px-3 sm:px-6 py-3 sm:py-4 border-t border-gray-800 bg-gray-900/40 backdrop-blur-md">
+          <form onSubmit={handleSend} className="flex items-end gap-2 sm:gap-3">
             <textarea
               ref={textareaRef}
               value={input}
@@ -437,19 +457,19 @@ export default function AssistantDashboard() {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e); }
               }}
               placeholder={`Message ${activeProvider.name}... (Shift+Enter for newline)`}
-              className="flex-1 bg-gray-950/80 border border-gray-700 focus:border-blue-500 rounded-xl py-3 px-4 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none min-h-[52px] max-h-32 text-sm transition-all"
+              className="flex-1 bg-gray-950/80 border border-gray-700 focus:border-blue-500 rounded-xl py-2.5 sm:py-3 px-3 sm:px-4 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none min-h-[46px] sm:min-h-[52px] max-h-32 text-xs sm:text-sm transition-all"
               rows={1}
             />
             <button
               type="submit"
               disabled={!input.trim() || loading}
-              className={`h-[52px] w-[52px] rounded-xl flex items-center justify-center transition-all shrink-0 shadow-lg ${
+              className={`h-[46px] w-[46px] sm:h-[52px] sm:w-[52px] rounded-xl flex items-center justify-center transition-all shrink-0 shadow-lg ${
                 input.trim() && !loading
                   ? 'bg-gradient-to-br from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white'
                   : 'bg-gray-800 text-gray-600 cursor-not-allowed'
               }`}
             >
-              {loading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
             </button>
           </form>
           <p className="text-center text-xs text-gray-600 mt-2">
