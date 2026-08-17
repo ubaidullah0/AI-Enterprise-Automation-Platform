@@ -9,19 +9,28 @@ class N8nService {
 
   private async request(method: string, path: string, body?: any) {
     const apiKey = process.env.N8N_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjZDQxMTRhYS1iZWY2LTQ2YjEtOTZlNC1mNGI0NWJjMjZlY2EiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiNWRlNWI4MjUtYzZkZC00ZmQ4LTg3ZmMtZWE0M2VhM2MzMmQ4IiwiaWF0IjoxNzg2NzkyNzM4fQ.lWxalIURpiwxYo34rycEyvEk4TF9Sa0w9XbM6rSJx2k';
-    const res = await fetch(`${this.baseURL}${path}`, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-N8N-API-KEY': apiKey,
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`n8n API error ${res.status}: ${text}`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    try {
+      const res = await fetch(`${this.baseURL}${path}`, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-N8N-API-KEY': apiKey,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`n8n API error ${res.status}: ${text}`);
+      }
+      return res.json();
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      throw err;
     }
-    return res.json();
   }
 
   async listWorkflows() {

@@ -31,15 +31,18 @@ export const getProviders = async (req: Request, res: Response) => {
       providers.push({ id: 'gemini', name: 'Gemini 2.0 Flash', color: 'from-blue-500 to-cyan-400' });
     }
 
-    // Check Ollama
+    // Check Ollama (with strict 300ms timeout so it never blocks or causes loading delay)
     try {
       const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
-      const ollamaRes = await fetch(`${ollamaUrl}/api/tags`, { method: 'GET' });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300);
+      const ollamaRes = await fetch(`${ollamaUrl}/api/tags`, { method: 'GET', signal: controller.signal });
+      clearTimeout(timeoutId);
       if (ollamaRes.ok) {
         providers.push({ id: 'ollama', name: 'Ollama (Local Models)', color: 'from-purple-500 to-indigo-400' });
       }
     } catch (e) {
-      // Ollama not running or reachable, skip
+      // Ollama not running or unreachable, skip immediately without waiting
     }
 
     // Always fallback to OpenAI if somehow everything fails, to match frontend expectations,
