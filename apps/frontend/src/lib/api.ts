@@ -13,9 +13,25 @@ import { useAuthStore } from '../store/authStore';
  * Never hardcode 'http://localhost:4000' here — that bypasses the
  * proxy and breaks CORS when Vite is on a different port.
  */
-let baseURL = import.meta.env.VITE_API_URL || '/api/v1';
-if (baseURL.startsWith('http') && !baseURL.endsWith('/api/v1')) {
-  baseURL = `${baseURL.replace(/\/$/, '')}/api/v1`;
+// Determine the correct backend URL:
+// 1. Use VITE_API_URL if explicitly set (highest priority)
+// 2. In production (not localhost), use the Render backend URL
+// 3. In local dev, use relative '/api/v1' which goes through Vite proxy → localhost:4000
+const isLocalDev = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+let baseURL: string;
+if (import.meta.env.VITE_API_URL) {
+  baseURL = import.meta.env.VITE_API_URL;
+  if (baseURL.startsWith('http') && !baseURL.endsWith('/api/v1')) {
+    baseURL = `${baseURL.replace(/\/$/, '')}/api/v1`;
+  }
+} else if (isLocalDev) {
+  // Local development — use Vite proxy
+  baseURL = '/api/v1';
+} else {
+  // Production (Vercel) — point directly to Render backend
+  baseURL = 'https://ai-enterprise-automation-platform.onrender.com/api/v1';
 }
 
 const api = axios.create({
