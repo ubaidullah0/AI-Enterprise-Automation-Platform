@@ -33,6 +33,11 @@ const providerBadge: Record<string, string> = {
 };
 
 
+const DEFAULT_PROVIDERS: AIProvider[] = [
+  { id: 'openai', name: 'GPT-4o', color: 'from-emerald-500 to-teal-400' },
+  { id: 'gemini', name: 'Gemini 2.0 Flash', color: 'from-blue-500 to-cyan-400' },
+];
+
 export default function AssistantDashboard() {
   const { user } = useAuthStore();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -40,30 +45,27 @@ export default function AssistantDashboard() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [providers, setProviders] = useState<AIProvider[]>([]);
+  const [providers, setProviders] = useState<AIProvider[]>(DEFAULT_PROVIDERS);
   const [provider, setProvider] = useState('openai');
   const [providerDropdownOpen, setProviderDropdownOpen] = useState(false);
   const [chatSidebarOpen, setChatSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [providersLoading, setProvidersLoading] = useState(true);
-
-  const activeProvider = providers.find(p => p.id === provider) || providers[0] || 
-    (providersLoading ? { id: 'loading', name: 'Loading Providers...', color: 'from-gray-500 to-gray-400' } : { id: 'none', name: 'No Provider Configured', color: 'from-red-500 to-red-400' });
+  const activeProvider = providers.find(p => p.id === provider) || providers[0] || DEFAULT_PROVIDERS[0];
 
   useEffect(() => {
     const fetchProviders = async () => {
       try {
         const res = await api.get('/ai/providers');
-        setProviders(res.data.data);
-        if (res.data.data.length > 0 && !res.data.data.find((p: AIProvider) => p.id === provider)) {
-          setProvider(res.data.data[0].id);
+        if (res.data.success && res.data.data.length > 0) {
+          setProviders(res.data.data);
+          if (!res.data.data.find((p: AIProvider) => p.id === provider)) {
+            setProvider(res.data.data[0].id);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch providers', err);
-      } finally {
-        setProvidersLoading(false);
       }
     };
     fetchProviders();
@@ -343,9 +345,7 @@ export default function AssistantDashboard() {
                     Select Provider
                   </div>
                   <div className="py-2">
-                    {providersLoading ? (
-                      <div className="px-4 py-2 text-sm text-gray-400">Loading...</div>
-                    ) : providers.length === 0 ? (
+                    {providers.length === 0 ? (
                       <div className="px-4 py-2 text-sm text-gray-400">No providers configured in Settings.</div>
                     ) : (
                       providers.map(p => (
