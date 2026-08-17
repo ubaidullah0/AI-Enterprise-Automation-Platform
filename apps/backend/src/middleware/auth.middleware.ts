@@ -12,7 +12,11 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error('JWT_SECRET is not configured on the server.');
+    }
+    const decoded = jwt.verify(token, secret);
     (req as any).user = decoded; // { userId: ... }
     next();
   } catch (error) {

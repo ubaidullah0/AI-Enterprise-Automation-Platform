@@ -8,14 +8,21 @@ import { sendPasswordResetEmail, sendWelcomeEmail, sendOtpEmail } from '../servi
 
 // ─── Token generation ─────────────────────────────────────────────────────────
 const generateTokens = (userId: string) => {
+  const jwtSecret = process.env.JWT_SECRET;
+  const refreshSecret = process.env.REFRESH_TOKEN_SECRET || process.env.JWT_REFRESH_SECRET;
+  
+  if (!jwtSecret || !refreshSecret) {
+    throw new Error('JWT_SECRET or REFRESH_TOKEN_SECRET is not configured on the server.');
+  }
+
   const accessToken = jwt.sign(
     { userId },
-    process.env.JWT_SECRET || 'secret',
+    jwtSecret,
     { expiresIn: '15m' }
   );
   const refreshToken = jwt.sign(
     { userId },
-    process.env.JWT_REFRESH_SECRET || 'refresh_secret',
+    refreshSecret,
     { expiresIn: '7d' }
   );
   return { accessToken, refreshToken };

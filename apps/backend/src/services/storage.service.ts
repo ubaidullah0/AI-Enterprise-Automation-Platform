@@ -5,16 +5,20 @@ import path from 'path';
 
 // Load MinIO Config
 const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || 'http://localhost:9000';
-const MINIO_ROOT_USER = process.env.MINIO_ROOT_USER || 'admin';
-const MINIO_ROOT_PASSWORD = process.env.MINIO_ROOT_PASSWORD || 'password123';
+const MINIO_ROOT_USER = process.env.MINIO_ROOT_USER;
+const MINIO_ROOT_PASSWORD = process.env.MINIO_ROOT_PASSWORD;
 const MINIO_BUCKET_NAME = process.env.MINIO_BUCKET_NAME || 'automation-platform-docs';
+
+if (!MINIO_ROOT_USER || !MINIO_ROOT_PASSWORD) {
+  console.warn('[Storage] MINIO_ROOT_USER or MINIO_ROOT_PASSWORD is not set. Storage service may fail.');
+}
 
 const s3Client = new S3Client({
   region: 'us-east-1', // MinIO requires a region, us-east-1 is standard
   endpoint: MINIO_ENDPOINT,
   credentials: {
-    accessKeyId: MINIO_ROOT_USER,
-    secretAccessKey: MINIO_ROOT_PASSWORD,
+    accessKeyId: MINIO_ROOT_USER || '',
+    secretAccessKey: MINIO_ROOT_PASSWORD || '',
   },
   forcePathStyle: true, // Crucial for MinIO
 });

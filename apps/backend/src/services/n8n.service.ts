@@ -8,7 +8,7 @@ class N8nService {
   }
 
   private async request(method: string, path: string, body?: any) {
-    const apiKey = process.env.N8N_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjZDQxMTRhYS1iZWY2LTQ2YjEtOTZlNC1mNGI0NWJjMjZlY2EiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiNWRlNWI4MjUtYzZkZC00ZmQ4LTg3ZmMtZWE0M2VhM2MzMmQ4IiwiaWF0IjoxNzg2NzkyNzM4fQ.lWxalIURpiwxYo34rycEyvEk4TF9Sa0w9XbM6rSJx2k';
+    const apiKey = process.env.N8N_API_KEY;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
     try {
