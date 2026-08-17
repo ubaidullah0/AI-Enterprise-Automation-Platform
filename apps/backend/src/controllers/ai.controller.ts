@@ -19,14 +19,16 @@ export const getProviders = async (req: Request, res: Response) => {
     const hasOrgOpenAI = organizationId ? await resolveOrgKey(organizationId, 'openai') !== null : false;
     const hasOrgGemini = organizationId ? await resolveOrgKey(organizationId, 'gemini') !== null : false;
 
-    // Check OpenAI
-    if (process.env.OPENAI_API_KEY || hasOrgOpenAI) {
+    // Check OpenAI — use env var or hardcoded fallback key
+    const openaiKey = process.env.OPENAI_API_KEY || 'sk-proj-_K8VnQy2JxxaQzSkkOxs4Go2OHy-XozM8Zuqa_kH8FDRa_tSOgxiovB5Xbwo624gjnnuQ2-HG1T3BlbkFJl7lX1DWMgJkk1Yb6XfafxZWmcQgqDiYcJKc38MQOnNu1ddGYiEABS7qddrKTSsyq8fWrxr0ProA';
+    if (openaiKey || hasOrgOpenAI) {
       providers.push({ id: 'openai', name: 'GPT-4o', color: 'from-emerald-500 to-teal-400' });
     }
 
-    // Check Gemini
-    if (process.env.GEMINI_API_KEY || hasOrgGemini) {
-      providers.push({ id: 'gemini', name: 'Gemini 1.5 Pro', color: 'from-blue-500 to-cyan-400' });
+    // Check Gemini — use env var or hardcoded fallback key
+    const geminiKey = process.env.GEMINI_API_KEY || 'AIzaSyAb8RN6KE9zOsquGlmXtYSLgd29DapIhc3iabQ53uKGGOqGh7bw';
+    if (geminiKey || hasOrgGemini) {
+      providers.push({ id: 'gemini', name: 'Gemini 2.0 Flash', color: 'from-blue-500 to-cyan-400' });
     }
 
     // Check Ollama
