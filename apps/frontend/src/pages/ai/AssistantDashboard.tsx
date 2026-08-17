@@ -202,26 +202,35 @@ export default function AssistantDashboard() {
             const dataStr = trimmedLine.slice(6);
             if (!dataStr) continue;
             
+            let data: any = null;
             try {
-              const data = JSON.parse(dataStr);
-              if (data.error) throw new Error(data.error);
-              if (data.token) {
-                currentText += data.token;
-                setMessages(prev => prev.map(msg => 
-                  msg.id === tempMessageId ? { ...msg, content: currentText } : msg
-                ));
-              }
-              if (data.done) {
-                if (!activeConversationId) {
-                  setActiveConversationId(data.conversationId);
-                  fetchConversations();
-                }
-                setMessages(prev => prev.map(msg => 
-                  msg.id === tempMessageId ? { ...msg, id: data.messageId } : msg
-                ));
-              }
+              data = JSON.parse(dataStr);
             } catch (e) {
               console.error('SSE JSON parse error', e, dataStr);
+              continue;
+            }
+            
+            if (data.error) {
+              setMessages(prev => prev.map(msg => 
+                msg.id === tempMessageId ? { ...msg, content: `⚠️ **API Error:** ${data.error}` } : msg
+              ));
+              return; // Stop reading the stream completely
+            }
+            
+            if (data.token) {
+              currentText += data.token;
+              setMessages(prev => prev.map(msg => 
+                msg.id === tempMessageId ? { ...msg, content: currentText } : msg
+              ));
+            }
+            if (data.done) {
+              if (!activeConversationId) {
+                setActiveConversationId(data.conversationId);
+                fetchConversations();
+              }
+              setMessages(prev => prev.map(msg => 
+                msg.id === tempMessageId ? { ...msg, id: data.messageId } : msg
+              ));
             }
           }
         }
