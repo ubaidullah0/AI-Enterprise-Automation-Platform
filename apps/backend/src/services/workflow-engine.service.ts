@@ -112,21 +112,76 @@ export class WorkflowEngine {
     // BFS queue (queue of node IDs)
     const queue: string[] = [triggerNode.id];
     const visited = new Set<string>();
+    
+    // Dependency tracking: tracks edge resolution states to ensure nodes wait for all incoming data
+    const edgeStates = new Map<string, 'TRAVERSED' | 'SKIPPED'>();
 
     let currentError = null;
 
     while (queue.length > 0) {
       const nodeId = queue.shift()!;
       if (visited.has(nodeId)) continue;
-      visited.add(nodeId);
 
       const node = nodes.find(n => n.id === nodeId);
       if (!node) continue;
 
+      // --- DEPENDENCY COMPLETION CHECK ---
+      if (nodeId !== triggerNode.id) {
+        const incomingEdges = edges.filter(e => e.target === nodeId);
+        
+        // Check if all incoming edges have resolved (either traversed or intentionally skipped)
+        const allResolved = incomingEdges.every(e => edgeStates.has(e.id));
+        
+        if (!allResolved) {
+          // Wait for pending incoming edges. We will process this node later when the final edge resolves and pushes it again.
+          continue; 
+        }
+
+        // If ALL incoming edges were skipped (dead path), skip this node and propagate SKIP downstream
+        const allSkipped = incomingEdges.length > 0 && incomingEdges.every(e => edgeStates.get(e.id) === 'SKIPPED');
+        if (allSkipped) {
+          visited.add(nodeId);
+          const outgoingEdges = edges.filter(e => e.source === nodeId);
+          for (const edge of outgoingEdges) {
+            edgeStates.set(edge.id, 'SKIPPED');
+            queue.push(edge.target);
+          }
+          continue;
+        }
+      }
+
+      visited.add(nodeId);
+
       logs.push({ time: new Date(), nodeId, type: node.type, message: 'Executing' });
 
       try {
-        const result = await this.executeNode(node, context, workflow.organizationId);
+        let retries = parseInt(node.data?.retries, 10);
+        if (isNaN(retries) || retries < 0) retries = 0;
+        
+        let attempts = 0;
+        let result: any;
+        let lastError: Error | null = null;
+        
+        while (attempts <= retries) {
+          attempts++;
+          try {
+            result = await this.executeNode(node, context, workflow.organizationId);
+            if (result && result.error) {
+              throw new Error(result.error);
+            }
+            lastError = null;
+            break; // Success, break out of retry loop
+          } catch (e: any) {
+            lastError = e;
+            if (attempts <= retries) {
+               logs.push({ time: new Date(), nodeId, type: node.type, message: `Retry ${attempts}/${retries}` });
+            }
+          }
+        }
+        
+        if (lastError) {
+           throw lastError; // Exhausted retries or 0 retries
+        }
         
         // Use node ID as variable namespace e.g. {{node_1.response}}
         // Also support user-defined output keys if needed in the future
@@ -134,13 +189,24 @@ export class WorkflowEngine {
         
         logs.push({ time: new Date(), nodeId, type: node.type, result });
 
+        const outgoingEdges = edges.filter(e => e.source === nodeId);
+
         if (node.type === 'logic_condition') {
           const isTrue = result.result;
-          const relevantEdges = edges.filter(e => e.source === nodeId && e.sourceHandle === (isTrue ? 'true' : 'false'));
-          for (const edge of relevantEdges) queue.push(edge.target);
+          for (const edge of outgoingEdges) {
+            // Traverse the matching branch, skip the non-matching branch
+            if (edge.sourceHandle === (isTrue ? 'true' : 'false')) {
+              edgeStates.set(edge.id, 'TRAVERSED');
+            } else {
+              edgeStates.set(edge.id, 'SKIPPED');
+            }
+            queue.push(edge.target);
+          }
         } else {
-          const nextEdges = edges.filter(e => e.source === nodeId);
-          for (const edge of nextEdges) queue.push(edge.target);
+          for (const edge of outgoingEdges) {
+            edgeStates.set(edge.id, 'TRAVERSED');
+            queue.push(edge.target);
+          }
         }
 
       } catch (err: any) {
