@@ -58,6 +58,16 @@
 
 For a complete breakdown of the system architecture, data flow, and security request lifecycle, please see the **[Architecture & Threat Model](docs/architecture.md)** document.
 
+### Workflow Execution Engine
+
+The platform uses a custom Node.js workflow execution engine based on dynamic BFS traversal.
+
+* **Dynamic BFS Traversal:** The engine uses dynamic BFS traversal because workflow branches can be determined at runtime, while dependency-state tracking ensures merge nodes execute only after their relevant incoming paths are resolved.
+* **Dependency Synchronization:** Merge nodes wait until all relevant incoming paths have been resolved before execution.
+* **Conditional Dead-Path Handling:** When a conditional branch is not selected, its skipped state is propagated so downstream merge nodes do not wait indefinitely for a path that will never execute.
+* **Isolated Node-Level Retries:** Nodes can be configured with a retry count. A failed node can be retried independently according to its configured retry count, without modifying the workflow graph. If retries are exhausted, the workflow fails instead of passing broken error context downstream.
+* **Testing & Validation:** Focused tests validate multiple dependency/merge behavior, conditional dead-path handling, retry recovery, and retry exhaustion. The implementation has successfully passed TypeScript type-checking.
+
 - **Frontend:** React 18, Vite, TailwindCSS, `@xyflow/react`, Zustand.
 - **Backend:** Node.js, Express 5, TypeScript, Prisma ORM.
 - **Infrastructure:** Dockerized PostgreSQL 16, Redis 7, n8n, MinIO, Nginx.
