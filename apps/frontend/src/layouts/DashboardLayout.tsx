@@ -21,6 +21,19 @@ export default function DashboardLayout() {
     return localStorage.getItem('theme') !== 'light';
   });
 
+  // Handle window resize for sidebar auto-collapse
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(true);
+      } else {
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => {
     const root = document.documentElement;
     if (isDarkMode) {
