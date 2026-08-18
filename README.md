@@ -44,38 +44,19 @@
 
 - Seamlessly create, trigger, and manage self-hosted n8n workflows for complex third-party app integrations directly from the platform.
 
-### 5. Real-Time Analytics & Compliance
+### 5. Analytics & Compliance
 <div align="center">
   <img src="docs/assets/08_analytics.png" alt="Analytics Dashboard" width="800"/>
 </div>
 
 - **Analytics:** Monitor AI token consumption, estimated USD costs, message volumes, and workflow success rates.
-- **Audit Logs:** Immutable tracking of all system mutations (Create, Delete, Update) exportable as CSV for compliance.
+- **Audit Logs:** Immutable tracking of system mutations (Create, Delete, Update) exportable as CSV for compliance.
 
 ---
 
 ## 🏗️ Architecture & Tech Stack
 
-```mermaid
-graph LR
-    subgraph "Frontend"
-        FE["React 18\nVite · TailwindCSS\nZustand"]
-    end
-
-    subgraph "Backend API"
-        BE["Express 5\nTypeScript\nPrisma ORM"]
-    end
-
-    subgraph "Infrastructure"
-        PG["PostgreSQL"]
-        RD["Redis"]
-        N8N["n8n"]
-        MIO["MinIO (S3)"]
-    end
-
-    FE -- "REST + SSE" --> BE
-    BE --> PG & RD & N8N & MIO
-```
+For a complete breakdown of the system architecture, data flow, and security request lifecycle, please see the **[Architecture & Threat Model](docs/architecture.md)** document.
 
 - **Frontend:** React 18, Vite, TailwindCSS, `@xyflow/react`, Zustand.
 - **Backend:** Node.js, Express 5, TypeScript, Prisma ORM.
